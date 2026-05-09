@@ -15,34 +15,38 @@ const micIcon = document.getElementById('micIcon');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 const videoFeed = document.getElementById('videoFeed');
 
-const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', noise: 'dB', people: 'pers.' };
+const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', noise: 'dB', people: 'pers.', trash: 'items' };
 const sensorLabels = {
   temp: 'Temperature',
   humidity: 'Humidity',
   light: 'Light',
   noise: 'Noise',
-  people: 'People'
+  people: 'People',
+  trash: 'Trash'
 };
 const sensorColors = {
   temp: '#2d8fcb',
   humidity: '#2d8fcb',
   light: '#2d8fcb',
   noise: '#2d8fcb',
-  people: '#2d8fcb'
+  people: '#2d8fcb',
+  trash: '#2d8fcb'
 };
 const metricHistory = {
   temp: [],
   humidity: [],
   light: [],
   noise: [],
-  people: []
+  people: [],
+  trash: []
 };
 const metricTrend = {
   temp: null,
   humidity: null,
   light: null,
   noise: null,
-  people: null
+  people: null,
+  trash: null
 };
 const sensorStatusState = {};
 const sensorStatusLabels = [
@@ -51,6 +55,7 @@ const sensorStatusLabels = [
   { key: 'light', label: 'Light Sensor', icon: 'sun' },
   { key: 'noise', label: 'Noise Sensor', icon: 'volume' },
   { key: 'people', label: 'People Sensor', icon: 'people' },
+  { key: 'trash', label: 'Trash Sensor', icon: 'trash' },
   { key: 'camera', label: 'Central Camera', icon: 'camera' },
   { key: 'microphone', label: 'Microphone', icon: 'mic' }
 ];
@@ -136,8 +141,8 @@ function metricCardTemplate(key) {
 }
 
 function renderMetricCards() {
-  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'noise', 'people'].map(metricCardTemplate).join('');
-  ['temp', 'humidity', 'light', 'noise', 'people'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
+  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'noise', 'people', 'trash'].map(metricCardTemplate).join('');
+  ['temp', 'humidity', 'light', 'noise', 'people', 'trash'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
 }
 
 function updateMetricVisuals(key, value, pulse = true) {
@@ -222,6 +227,7 @@ function sensorIcon(name) {
     sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.9 4.9l1.4 1.4"></path><path d="M17.7 17.7l1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.9 19.1l1.4-1.4"></path><path d="M17.7 6.3l1.4-1.4"></path></svg>',
     volume: '<svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4z"></path><path d="M16 9a4 4 0 0 1 0 6"></path><path d="M18.5 6.5a7 7 0 0 1 0 11"></path></svg>',
     people: '<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"></circle><circle cx="16" cy="8" r="3"></circle><path d="M8 11a3 3 0 0 0-3 3v4h2v-4a1 1 0 0 1 1-1h2v-2H8z"></path><path d="M16 11a3 3 0 0 1 3 3v4h-2v-4a1 1 0 0 0-1-1h-2v-2h2z"></path><path d="M12 11a2 2 0 0 0-2 2v4h4v-4a2 2 0 0 0-2-2z"></path></svg>',
+    trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M8 7V5h8v2"></path><path d="M6 7l1 13h10l1-13"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>',
     camera: '<svg viewBox="0 0 24 24"><path d="M4 7h8l2 3h6v9H4z"></path><circle cx="12" cy="14" r="3"></circle></svg>',
     mic: '<svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V8a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3z"></path><path d="M5 12a7 7 0 0 0 14 0"></path><path d="M12 19v3"></path></svg>'
   };
@@ -295,6 +301,24 @@ function addMessage(role, text) {
   renderMessages();
 }
 
+function buildReportData() {
+  return {
+    generatedAt: new Date(),
+    connected: state.connected,
+    metrics: { ...state.metrics },
+    history: Object.fromEntries(Object.entries(metricHistory).map(([key, values]) => [key, values.slice()])),
+    events: state.events.slice(0, 4),
+    sensors: sensorStatusLabels.map((sensor) => {
+      const rawStatus = sensorStatusState[sensor.key];
+      return {
+        key: sensor.key,
+        label: sensor.label,
+        status: typeof rawStatus === 'undefined' ? 'Pending' : rawStatus ? 'Connected' : 'Disconnected'
+      };
+    })
+  };
+}
+
 function renderMessages() {
   if (!state.messages.length) {
     chatThread.innerHTML = '';
@@ -345,24 +369,13 @@ async function sendChatMessage(text) {
 
 async function downloadReport() {
   try {
-    const response = await fetch('/api/report');
-    if (!response.ok) {
-      throw new Error('The report could not be generated');
+    if (typeof window.createParkReportPdf !== 'function') {
+      throw new Error('PDF generator is not available');
     }
 
-    const blob = await response.blob();
-    const contentType = response.headers.get('content-type') || '';
-    const filename = contentType.includes('pdf') ? 'park-report.pdf' : 'park-report.json';
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    window.createParkReportPdf(buildReportData());
   } catch (error) {
-    addMessage('bot', 'The report could not be downloaded right now.');
+    addMessage('bot', 'The report could not be generated right now.');
   }
 }
 
