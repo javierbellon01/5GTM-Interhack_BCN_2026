@@ -1,17 +1,30 @@
 import time
 
-from arduino.app_utils import App
+from arduino.app_utils import App, Bridge
 from arduino.app_bricks.web_ui import WebUI
 
 print("Hello world!")
 
-
-def loop():
-    """This function is called repeatedly by the App framework."""
-    # You can replace this with any code you want your App to run repeatedly.
-    pass
-
 ui = WebUI()
 
-# See: https://docs.arduino.cc/software/app-lab/tutorials/getting-started/#app-run
+def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
+    if celsius is None or humidity is None or lightlevel is None:
+        print(
+            "Received invalid sensor samples: "
+            f"celsius={celsius}, humidity={humidity}, light level={lightlevel}"
+        )
+        return
+
+    print(
+        f"Received Temperature: {celsius} ºC, "
+        f"Humidity: {humidity} %, "
+        f"Light level: {lightlevel}"
+    )
+
+def loop():
+    time.sleep(0.1)
+
+print("Registering 'record_sensor_samples' callback.")
+Bridge.provide("record_sensor_samples", record_sensor_samples)
+
 App.run(user_loop=loop)
