@@ -15,39 +15,44 @@ const micIcon = document.getElementById('micIcon');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 const videoFeed = document.getElementById('videoFeed');
 
-const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', noise: 'dB' };
+const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', noise: 'dB', people: 'pers.' };
 const sensorLabels = {
-  temp: 'Temperatura',
-  humidity: 'Humitat',
-  light: 'Llum',
-  noise: 'Soroll'
+  temp: 'Temperature',
+  humidity: 'Humidity',
+  light: 'Light',
+  noise: 'Noise',
+  people: 'People'
 };
 const sensorColors = {
   temp: '#2d8fcb',
   humidity: '#2d8fcb',
   light: '#2d8fcb',
-  noise: '#2d8fcb'
+  noise: '#2d8fcb',
+  people: '#2d8fcb'
 };
 const metricHistory = {
   temp: [],
   humidity: [],
   light: [],
-  noise: []
+  noise: [],
+  people: []
 };
 const metricTrend = {
   temp: null,
   humidity: null,
   light: null,
-  noise: null
+  noise: null,
+  people: null
 };
 const sensorStatusState = {};
 const sensorStatusLabels = [
-  { key: 'temp', label: 'Sensor de Temperatura', icon: 'thermometer' },
-  { key: 'humidity', label: "Sensor d'Humitat", icon: 'droplet' },
-  { key: 'light', label: 'Sensor de Llum', icon: 'sun' },
-  { key: 'noise', label: 'Sensor de Soroll', icon: 'volume' },
-  { key: 'camera', label: 'Càmera Central', icon: 'camera' },
-  { key: 'microphone', label: 'Micròfon', icon: 'mic' }
+  { key: 'temp', label: 'Temperature Sensor', icon: 'thermometer' },
+  { key: 'humidity', label: 'Humidity Sensor', icon: 'droplet' },
+  { key: 'light', label: 'Light Sensor', icon: 'sun' },
+  { key: 'noise', label: 'Noise Sensor', icon: 'volume' },
+  { key: 'people', label: 'People Sensor', icon: 'people' },
+  { key: 'camera', label: 'Central Camera', icon: 'camera' },
+  { key: 'microphone', label: 'Microphone', icon: 'mic' }
 ];
 
 const state = {
@@ -126,8 +131,8 @@ function metricCardTemplate(key) {
 }
 
 function renderMetricCards() {
-  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'noise'].map(metricCardTemplate).join('');
-  ['temp', 'humidity', 'light', 'noise'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
+  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'noise', 'people'].map(metricCardTemplate).join('');
+  ['temp', 'humidity', 'light', 'noise', 'people'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
 }
 
 function updateMetricVisuals(key, value, pulse = true) {
@@ -137,7 +142,7 @@ function updateMetricVisuals(key, value, pulse = true) {
   if (!valueNode || !trendNode || !lineNode) return;
 
   valueNode.textContent = formatMetricValue(key, value);
-  trendNode.textContent = 'Esperant dades del backend';
+  trendNode.textContent = 'Waiting for backend data';
   valueNode.classList.remove('flash');
   if (pulse) {
     valueNode.classList.add('flash');
@@ -160,7 +165,7 @@ function updateMetricVisuals(key, value, pulse = true) {
   const delta = metricTrend[key];
   if (delta === null || delta === undefined) {
     trendNode.classList.remove('trend-up', 'trend-down');
-    trendNode.textContent = 'Esperant dades del backend';
+    trendNode.textContent = 'Waiting for backend data';
     return;
   }
 
@@ -171,7 +176,7 @@ function updateMetricVisuals(key, value, pulse = true) {
 
 function renderEvents() {
   if (!state.events.length) {
-    eventList.innerHTML = '<div class="events-empty">Encara no s\'han rebut events del backend.</div>';
+    eventList.innerHTML = '<div class="events-empty">No events have been received from the backend yet.</div>';
     return;
   }
   eventList.innerHTML = state.events.slice(0, 5).map((event) => {
@@ -192,13 +197,14 @@ function renderEvents() {
 function renderSensors() {
   sensorList.innerHTML = sensorStatusLabels.map((sensor) => {
     const rawStatus = sensorStatusState[sensor.key];
-    const active = rawStatus === true;
+    const connected = rawStatus === true;
+    const disconnected = rawStatus === false;
     const pending = typeof rawStatus === 'undefined';
     return `
       <div class="sensor-row" data-sensor-row="${sensor.key}">
-        <span class="sensor-mark" aria-hidden="true">${sensorIcon(sensor.icon)}</span>
+        <span class="sensor-mark ${pending ? 'is-pending' : connected ? 'is-connected' : 'is-disconnected'}" aria-hidden="true">${sensorIcon(sensor.icon)}</span>
         <div class="sensor-name">${escapeHtml(sensor.label)}</div>
-        <div class="sensor-status ${pending ? 'status-pending' : active ? 'status-ok' : 'status-error'}">${pending ? 'Pendent' : active ? 'Operatiu' : 'Error'}</div>
+        <div class="sensor-status ${pending ? 'status-pending' : connected ? 'status-ok' : 'status-error'}">${pending ? 'Pending' : connected ? 'Connected' : 'Disconnected'}</div>
       </div>
     `;
   }).join('');
@@ -220,8 +226,8 @@ function setConnected(connected) {
   state.connected = connected;
   wsStatus.classList.toggle('is-offline', !connected);
   liveIndicator.classList.toggle('is-offline', !connected);
-  wsStatusText.textContent = connected ? 'Connectat' : 'Desconnectat';
-  liveIndicatorText.textContent = connected ? 'En viu' : 'Esperant backend';
+  wsStatusText.textContent = connected ? 'Connected' : 'Disconnected';
+  liveIndicatorText.textContent = connected ? 'Live' : 'Waiting for backend';
 }
 
 let latestMetricsTimer = null;
@@ -242,8 +248,9 @@ async function refreshLatestMetrics() {
 }
 
 function applySensorPayload(data) {
-  ['temp', 'humidity', 'light', 'noise'].forEach((key) => {
+  ['temp', 'humidity', 'light', 'noise', 'people'].forEach((key) => {
     if (typeof data[key] !== 'undefined') {
+      sensorStatusState[key] = true;
       state.metrics[key] = Number(data[key]);
       metricHistory[key].push(Number(data[key]));
       if (metricHistory[key].length > 18) {
@@ -258,8 +265,8 @@ function applySensorPayload(data) {
 
 function applySensorStatus(data) {
   Object.entries(data).forEach(([key, value]) => {
-    if (key in sensorStatusState) {
-      sensorStatusState[key] = Boolean(value);
+    if (key in sensorStatusState || sensorStatusLabels.some((sensor) => sensor.key === key)) {
+      sensorStatusState[key] = value === true || value === 'connected';
     }
   });
   renderSensors();
@@ -333,12 +340,12 @@ async function downloadReport() {
   try {
     const response = await fetch('/api/report');
     if (!response.ok) {
-      throw new Error('No s’ha pogut generar el report');
+      throw new Error('The report could not be generated');
     }
 
     const blob = await response.blob();
     const contentType = response.headers.get('content-type') || '';
-    const filename = contentType.includes('pdf') ? 'informe-parc.pdf' : 'informe-parc.json';
+    const filename = contentType.includes('pdf') ? 'park-report.pdf' : 'park-report.json';
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -348,7 +355,7 @@ async function downloadReport() {
     link.remove();
     URL.revokeObjectURL(url);
   } catch (error) {
-    addMessage('bot', 'No s’ha pogut descarregar l’informe en aquest moment.');
+    addMessage('bot', 'The report could not be downloaded right now.');
   }
 }
 
@@ -375,12 +382,13 @@ function captureCameraFrame() {
 function toggleMicrophone() {
   state.microphoneEnabled = !state.microphoneEnabled;
   micBtn.setAttribute('aria-pressed', String(state.microphoneEnabled));
-  micBtn.title = state.microphoneEnabled ? 'Micròfon activat' : 'Micròfon desactivat';
+  micBtn.title = state.microphoneEnabled ? 'Microphone enabled' : 'Microphone disabled';
   micBtn.style.borderColor = state.microphoneEnabled ? 'var(--border)' : 'rgba(192, 57, 43, 0.6)';
   micBtn.style.background = state.microphoneEnabled ? 'rgba(255, 255, 255, 0.02)' : 'rgba(192, 57, 43, 0.12)';
   micIcon.innerHTML = state.microphoneEnabled
     ? '<path d="M12 15a3 3 0 0 0 3-3V8a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3z"></path><path d="M5 12a7 7 0 0 0 14 0"></path><path d="M12 19v3"></path>'
     : '<path d="M7 11v1a5 5 0 0 0 8 3.9"></path><path d="M12 15a3 3 0 0 1-3-3V8"></path><path d="M5 5l14 14"></path><path d="M12 19v3"></path>';
+  sensorStatusState.microphone = state.microphoneEnabled;
   sensorStatusState.microphone = state.microphoneEnabled;
   renderSensors();
 }
@@ -416,6 +424,9 @@ renderEvents();
 renderSensors();
 renderMessages();
 setConnected(false);
+sensorStatusState.camera = true;
+sensorStatusState.microphone = true;
+renderSensors();
 refreshLatestMetrics();
 latestMetricsTimer = window.setInterval(refreshLatestMetrics, 1000);
 

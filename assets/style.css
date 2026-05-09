@@ -626,7 +626,25 @@ img { display: block; max-width: 100%; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--muted);
+}
+
+.sensor-mark.is-connected {
+  color: var(--ok);
+  background: rgba(47, 111, 83, 0.12);
+  border-color: rgba(47, 111, 83, 0.4);
+}
+
+.sensor-mark.is-disconnected {
+  color: var(--alert);
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.28);
+}
+
+.sensor-mark.is-pending {
   color: var(--accent-2);
+  background: rgba(76, 143, 194, 0.1);
+  border-color: rgba(76, 143, 194, 0.24);
 }
 
 .sensor-name {
