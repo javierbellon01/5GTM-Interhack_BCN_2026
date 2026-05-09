@@ -15,34 +15,28 @@ const micIcon = document.getElementById('micIcon');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 const videoFeed = document.getElementById('videoFeed');
 
-const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', noise: 'dB', people: 'pers.' };
+const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', noise: 'dB', people: 'pers.', trash_counter: 'items' };
 const sensorLabels = {
   temp: 'Temperature',
   humidity: 'Humidity',
   light: 'Light',
   noise: 'Noise',
-  people: 'People'
+  people: 'People',
+  trash_counter: 'Litter Detected'
 };
 const sensorColors = {
   temp: '#2d8fcb',
   humidity: '#2d8fcb',
   light: '#2d8fcb',
   noise: '#2d8fcb',
-  people: '#2d8fcb'
+  people: '#2d8fcb',
+  trash_counter: '#d2473f' // Red color to highlight trash
 };
 const metricHistory = {
-  temp: [],
-  humidity: [],
-  light: [],
-  noise: [],
-  people: []
+  temp: [], humidity: [], light: [], noise: [], people: [], trash_counter: []
 };
 const metricTrend = {
-  temp: null,
-  humidity: null,
-  light: null,
-  noise: null,
-  people: null
+  temp: null, humidity: null, light: null, noise: null, people: null, trash_counter: null
 };
 const sensorStatusState = {};
 const sensorStatusLabels = [
@@ -136,8 +130,8 @@ function metricCardTemplate(key) {
 }
 
 function renderMetricCards() {
-  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'noise', 'people'].map(metricCardTemplate).join('');
-  ['temp', 'humidity', 'light', 'noise', 'people'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
+  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'noise', 'people', 'trash_counter'].map(metricCardTemplate).join('');
+  ['temp', 'humidity', 'light', 'noise', 'people', 'trash_counter'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
 }
 
 function updateMetricVisuals(key, value, pulse = true) {
@@ -254,7 +248,7 @@ async function refreshLatestMetrics() {
 }
 
 function applySensorPayload(data) {
-  ['temp', 'humidity', 'light', 'noise', 'people'].forEach((key) => {
+  ['temp', 'humidity', 'light', 'noise', 'people', 'trash_counter'].forEach((key) => {
     if (typeof data[key] !== 'undefined') {
       sensorStatusState[key] = true;
       state.metrics[key] = Number(data[key]);

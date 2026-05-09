@@ -10,7 +10,8 @@ db = TimeSeriesStore()
 db.start()
 
 ui = WebUI()
-
+detector = VideoObjectDetection(confidence=0.5, debounce_sec=0.0)
+detector.start()
 
 def on_get_samples(resource: str, start: str, aggr_window: str):
     samples = db.read_samples(
@@ -24,15 +25,26 @@ def on_get_samples(resource: str, start: str, aggr_window: str):
 
 
 def on_get_latest():
+    # Fetch latest from TimeSeries DB
     temperature = db.read_last_sample("temperature")
     humidity = db.read_last_sample("humidity")
     light = db.read_last_sample("light")
+    noise = db.read_last_sample("noise")
+    people = db.read_last_sample("people")
+    trash = db.read_last_sample("trash_counter")
 
+    ts_ms = temperature[1] if temperature else int(datetime.datetime.now().timestamp() * 1000)
+    formatted_ts = datetime.datetime.fromtimestamp(ts_ms / 1000).strftime("T%Y-%m-%d_%H:%M:%S.%f")[:-3]
+
+    # Return exactly the JSON format requested
     return {
+        "timestamp": formatted_ts,
         "temp": temperature[2] if temperature else None,
         "humidity": humidity[2] if humidity else None,
-        "light": light[2] if light else None,
-        "timestamp": temperature[1] if temperature else None,
+        "lightlevel": light[2] if light else None,
+        "noise": noise[2] if noise else 0, # Defaulting to 0 until mic is implemented
+        "people": people[2] if people else 0,
+        "trash_counter": trash[2] if trash else 0
     }
 
 
@@ -41,7 +53,8 @@ def on_chat_message(payload: dict):
     latest = on_get_latest()
     return {
         "reply": (
-            f"Última lectura: {latest['temp']} ºC, {latest['humidity']} % d'humitat i {latest['light']} lux."
+            f"Última lectura: {latest['temp']} ºC, {latest['humidity']} % d'humitat, "
+            f"{latest['lightlevel']} lux, {latest['people']} persones i {latest['trash_counter']} brosses detectades."
         )
     }
 
@@ -61,56 +74,52 @@ ui.expose_api("GET", "/api/report", on_report)
 
 
 def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
-    """Callback invoked by the sketch every second.
-
-    Stores temperature, humidity, and light in the time-series DB and pushes the
-    latest values to the Web UI.
-    """
     if celsius is None or humidity is None or lightlevel is None:
-        print(
-            "Received invalid sensor samples: "
-            f"celsius={celsius}, humidity={humidity}, light level={lightlevel}"
-        )
         return
 
     timestamp = int(datetime.datetime.now().timestamp() * 1000)
 
-    temperature = float(celsius)
-    humidity_value = float(humidity)
-    light_value = float(lightlevel)
+    # 1. Fetch live detections from the camera
+    detections = detector.get_latest_detections()
+    people_count = sum(1 for d in detections if d.get('label') == 'people')
+    trash_count = sum(1 for d in detections if d.get('label') == 'trash')
+    
+    # Placeholder for noise (needs to be routed from the mic brick/sketch later)
+    noise_level = 50.0 
 
-    db.write_sample("temperature", temperature, timestamp)
-    db.write_sample("humidity", humidity_value, timestamp)
-    db.write_sample("light", light_value, timestamp)
+    # 2. Write everything to the TimeSeries DB
+    db.write_sample("temperature", float(celsius), timestamp)
+    db.write_sample("humidity", float(humidity), timestamp)
+    db.write_sample("light", float(lightlevel), timestamp)
+    db.write_sample("noise", float(noise_level), timestamp)
+    db.write_sample("people", float(people_count), timestamp)
+    db.write_sample("trash_counter", float(trash_count), timestamp)
 
-    ui.send_message("temperature", {"value": temperature, "ts": timestamp})
-    ui.send_message("humidity", {"value": humidity_value, "ts": timestamp})
-    ui.send_message("light", {"value": light_value, "ts": timestamp})
-    ui.send_message(
-        "sensors",
-        {
-            "temp": temperature,
-            "humidity": humidity_value,
-            "light": light_value,
-            "ts": timestamp,
-        },
-    )
-
-    print(
-        f"Received Temperature: {temperature} ºC, "
-        f"Humidity: {humidity_value} %, "
-        f"Light level: {light_value}"
-    )
+    # 3. Push to Web UI via WebSockets
+    payload = {
+        "temp": float(celsius),
+        "humidity": float(humidity),
+        "light": float(lightlevel),
+        "noise": float(noise_level),
+        "people": float(people_count),
+        "trash_counter": float(trash_count),
+        "ts": timestamp,
+    }
+    
+    for key, val in payload.items():
+        if key != "ts":
+            ui.send_message(key, {"value": val, "ts": timestamp})
+            
+    ui.send_message("sensors", payload)
 
 
 def loop():
     time.sleep(0.1)
 
-
-print("Registering 'record_sensor_samples' callback.")
 Bridge.provide("record_sensor_samples", record_sensor_samples)
 
 try:
     App.run(user_loop=loop)
 finally:
     db.stop()
+    detector.stop()
