@@ -3,4 +3,5 @@ description: <a id="readme-top"></a>
 ports: []
 bricks:
 - arduino:web_ui: {}
+- arduino:dbstorage_tsstore: {}
 icon: 😀
