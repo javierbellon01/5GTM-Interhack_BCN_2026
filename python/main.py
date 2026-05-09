@@ -22,8 +22,8 @@ def update_camera_counts(detections: dict):
     # Print exactly what the AI sees to your terminal for debugging
     print(f"Live detections: {detections}") 
     
-    # Map the AI's "person" label to your internal "people" counter
-    latest_camera_counts["people"] = len(detections.get("person", detections.get("people", [])))
+    # Map the AI's "person" label to the dashboard's person counter
+    latest_camera_counts["person"] = len(detections.get("person", []))
     latest_camera_counts["trash"] = len(detections.get("trash", []))
     
 # 3. Register the callback BEFORE starting the detector
@@ -85,7 +85,7 @@ def on_chat_message(payload: dict):
     return {
         "reply": (
             f"Última lectura: {latest['temp']} ºC, {latest['humidity']} % d'humitat, "
-            f"{latest['lightlevel']} lux, {latest['person']} persones i {latest['trash_counter']} brosses detectades."
+                f"{latest['lightlevel']} lux, {latest['person']} persones i {latest['trash_counter']} brosses detectades."
         )
     }
 
@@ -96,15 +96,6 @@ def on_report():
         "latest": latest,
         "message": "Informe generat amb les darreres dades de la sèrie temporal.",
     }
-
-# Create a route that returns the raw video stream from the detector
-# --- ADD THIS NEW FUNCTION ---
-def on_video_feed():
-    # This fetches the raw MJPEG video stream from the object detector
-    return detector.get_stream() 
-
-# Expose it to the EXACT path your HTML image tag is looking for
-ui.expose_api("GET", "/video_feed", on_video_feed)
 
 ui.expose_api("GET", "/get_samples/{resource}/{start}/{aggr_window}", on_get_samples)
 ui.expose_api("GET", "/api/latest", on_get_latest)
@@ -119,7 +110,7 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
     timestamp = int(datetime.datetime.now().timestamp() * 1000)
 
     # 1. Read the latest live detections from our background state
-    people_count = latest_camera_counts["person"]
+    person_count = latest_camera_counts["person"]
     trash_count = latest_camera_counts["trash"]
     
     # Placeholder for noise (needs to be routed from the mic brick/sketch later)
@@ -130,7 +121,7 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
     db.write_sample("humidity", float(humidity), timestamp)
     db.write_sample("light", float(lightlevel), timestamp)
     db.write_sample("noise", float(noise_level), timestamp)
-    db.write_sample("person", float(people_count), timestamp)
+    db.write_sample("person", float(person_count), timestamp)
     db.write_sample("trash_counter", float(trash_count), timestamp)
 
     # 3. Push to Web UI via WebSockets
@@ -139,7 +130,7 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
         "humidity": float(humidity),
         "light": float(lightlevel),
         "noise": float(noise_level),
-        "person": float(people_count),
+        "person": float(person_count),
         "trash_counter": float(trash_count),
         "ts": timestamp,
     }
