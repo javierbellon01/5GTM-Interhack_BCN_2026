@@ -32,7 +32,7 @@ const sensorColors = {
   noise: '#2d8fcb',
   people: '#2d8fcb'
 };
-const metricKeys = ['temp', 'humidity', 'light', 'trash'];
+const metricKeys = ['temp', 'humidity', 'light', 'noise', 'people', 'trash'];
 const metricHistory = {
   temp: [],
   humidity: [],
@@ -61,6 +61,12 @@ const metricLastSeenAt = {
   light: null,
   trash: null
 };
+
+// add noise and people to status/lastSeen
+metricStatusState.noise = false;
+metricStatusState.people = false;
+metricLastSeenAt.noise = null;
+metricLastSeenAt.people = null;
 const metricHeartbeatTimeoutMs = 2500;
 const sensorStatusState = {};
 const sensorStatusLabels = [
@@ -322,19 +328,7 @@ function applySensorPayload(data) {
     }
   });
 
-  ['noise', 'people'].forEach((key) => {
-    if (typeof data[key] !== 'undefined') {
-      sensorStatusState[key] = true;
-      state.metrics[key] = Number(data[key]);
-      metricHistory[key].push(Number(data[key]));
-      if (metricHistory[key].length > 18) {
-        metricHistory[key].shift();
-      }
-      const previous = metricHistory[key][metricHistory[key].length - 2];
-      metricTrend[key] = typeof previous === 'number' ? Number(data[key]) - previous : null;
-      updateMetricVisuals(key, data[key], true);
-    }
-  });
+  
   renderSensors();
 }
 
