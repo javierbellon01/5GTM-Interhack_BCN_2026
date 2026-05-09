@@ -369,16 +369,16 @@ img { display: block; max-width: 100%; }
   fill: none;
   stroke: var(--accent-2);
   stroke-width: 2.2;
-  stroke-dasharray: 4 6;
-  animation: dash 16s linear infinite;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .metric-sparkline .spark-glow {
   stroke: rgba(79, 138, 103, 0.18);
   stroke-width: 5;
-  opacity: 0.55;
-  stroke-dasharray: 4 6;
-  animation: dash 16s linear infinite;
+  opacity: 0.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .metric-trend {
@@ -778,4 +778,8 @@ img { display: block; max-width: 100%; }
   }
 
   .footer-logo { padding: 0 12px; }
+}
+
+.spark-line {
+  filter: drop-shadow(0 0 3px rgba(79, 138, 103, 0.25));
 }
