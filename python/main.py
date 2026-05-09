@@ -2,6 +2,7 @@ import datetime
 import time
 
 from arduino.app_bricks.dbstorage_tsstore import TimeSeriesStore
+from arduino.app_bricks.video_objectdetection import VideoObjectDetection
 from arduino.app_bricks.web_ui import WebUI
 from arduino.app_utils import App, Bridge
 
@@ -11,7 +12,25 @@ db.start()
 
 ui = WebUI()
 detector = VideoObjectDetection(confidence=0.5, debounce_sec=0.0)
+latest_camera_counts = {
+    "person": 0,
+    "trash": 0
+}
+
+# 2. Define the callback function that the camera will trigger
+def update_camera_counts(detections: dict):
+    # Print exactly what the AI sees to your terminal for debugging
+    print(f"Live detections: {detections}") 
+    
+    # Map the AI's "person" label to your internal "people" counter
+    latest_camera_counts["people"] = len(detections.get("person", detections.get("people", [])))
+    latest_camera_counts["trash"] = len(detections.get("trash", []))
+    
+# 3. Register the callback BEFORE starting the detector
+detector.on_detect_all(update_camera_counts)
 detector.start()
+
+
 
 def on_get_samples(resource: str, start: str, aggr_window: str):
     samples = db.read_samples(
@@ -30,20 +49,32 @@ def on_get_latest():
     humidity = db.read_last_sample("humidity")
     light = db.read_last_sample("light")
     noise = db.read_last_sample("noise")
-    people = db.read_last_sample("people")
+    person = db.read_last_sample("person")
     trash = db.read_last_sample("trash_counter")
 
-    ts_ms = temperature[1] if temperature else int(datetime.datetime.now().timestamp() * 1000)
-    formatted_ts = datetime.datetime.fromtimestamp(ts_ms / 1000).strftime("T%Y-%m-%d_%H:%M:%S.%f")[:-3]
+    # Handle the timestamp formatting safely
+    if temperature and temperature[1]:
+        try:
+            # Parse the DB's ISO string (e.g., '2026-05-09T18:08:01.701000+00:00')
+            dt = datetime.datetime.fromisoformat(str(temperature[1]))
+        except ValueError:
+            # Fallback just in case the format is unexpected
+            dt = datetime.datetime.now()
+    else:
+        # If the database is completely empty, use current time
+        dt = datetime.datetime.now()
+
+    # Format it to match "T2026-05-09_19:01:36.578" exactly
+    formatted_ts = dt.strftime("T%Y-%m-%d_%H:%M:%S.%f")[:-3]
 
     # Return exactly the JSON format requested
     return {
         "timestamp": formatted_ts,
         "temp": temperature[2] if temperature else None,
         "humidity": humidity[2] if humidity else None,
-        "lightlevel": light[2] if light else None,
+        "light": light[2] if light else None,
         "noise": noise[2] if noise else 0, # Defaulting to 0 until mic is implemented
-        "people": people[2] if people else 0,
+        "person": person[2] if person else 0,
         "trash_counter": trash[2] if trash else 0
     }
 
@@ -54,7 +85,7 @@ def on_chat_message(payload: dict):
     return {
         "reply": (
             f"Última lectura: {latest['temp']} ºC, {latest['humidity']} % d'humitat, "
-            f"{latest['lightlevel']} lux, {latest['people']} persones i {latest['trash_counter']} brosses detectades."
+            f"{latest['lightlevel']} lux, {latest['person']} persones i {latest['trash_counter']} brosses detectades."
         )
     }
 
@@ -66,6 +97,14 @@ def on_report():
         "message": "Informe generat amb les darreres dades de la sèrie temporal.",
     }
 
+# Create a route that returns the raw video stream from the detector
+# --- ADD THIS NEW FUNCTION ---
+def on_video_feed():
+    # This fetches the raw MJPEG video stream from the object detector
+    return detector.get_stream() 
+
+# Expose it to the EXACT path your HTML image tag is looking for
+ui.expose_api("GET", "/video_feed", on_video_feed)
 
 ui.expose_api("GET", "/get_samples/{resource}/{start}/{aggr_window}", on_get_samples)
 ui.expose_api("GET", "/api/latest", on_get_latest)
@@ -79,10 +118,9 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
 
     timestamp = int(datetime.datetime.now().timestamp() * 1000)
 
-    # 1. Fetch live detections from the camera
-    detections = detector.get_latest_detections()
-    people_count = sum(1 for d in detections if d.get('label') == 'people')
-    trash_count = sum(1 for d in detections if d.get('label') == 'trash')
+    # 1. Read the latest live detections from our background state
+    people_count = latest_camera_counts["person"]
+    trash_count = latest_camera_counts["trash"]
     
     # Placeholder for noise (needs to be routed from the mic brick/sketch later)
     noise_level = 50.0 
@@ -92,7 +130,7 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
     db.write_sample("humidity", float(humidity), timestamp)
     db.write_sample("light", float(lightlevel), timestamp)
     db.write_sample("noise", float(noise_level), timestamp)
-    db.write_sample("people", float(people_count), timestamp)
+    db.write_sample("person", float(people_count), timestamp)
     db.write_sample("trash_counter", float(trash_count), timestamp)
 
     # 3. Push to Web UI via WebSockets
@@ -101,7 +139,7 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
         "humidity": float(humidity),
         "light": float(lightlevel),
         "noise": float(noise_level),
-        "people": float(people_count),
+        "person": float(people_count),
         "trash_counter": float(trash_count),
         "ts": timestamp,
     }

@@ -4,4 +4,6 @@ ports: []
 bricks:
 - arduino:web_ui: {}
 - arduino:dbstorage_tsstore: {}
+- arduino:video_object_detection:
+    model: ei-model-991247-1
 icon: 😀
