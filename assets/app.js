@@ -65,6 +65,11 @@ const state = {
   messages: []
 };
 
+function setSensorStatus(key, connected) {
+  sensorStatusState[key] = Boolean(connected);
+  renderSensors();
+}
+
 function escapeHtml(text) {
   return String(text)
     .replaceAll('&', '&amp;')
@@ -261,6 +266,7 @@ function applySensorPayload(data) {
       updateMetricVisuals(key, data[key], true);
     }
   });
+  renderSensors();
 }
 
 function applySensorStatus(data) {
@@ -388,9 +394,7 @@ function toggleMicrophone() {
   micIcon.innerHTML = state.microphoneEnabled
     ? '<path d="M12 15a3 3 0 0 0 3-3V8a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3z"></path><path d="M5 12a7 7 0 0 0 14 0"></path><path d="M12 19v3"></path>'
     : '<path d="M7 11v1a5 5 0 0 0 8 3.9"></path><path d="M12 15a3 3 0 0 1-3-3V8"></path><path d="M5 5l14 14"></path><path d="M12 19v3"></path>';
-  sensorStatusState.microphone = state.microphoneEnabled;
-  sensorStatusState.microphone = state.microphoneEnabled;
-  renderSensors();
+  setSensorStatus('microphone', state.microphoneEnabled);
 }
 
 async function openFullscreen() {
@@ -419,14 +423,14 @@ captureBtn.addEventListener('click', captureCameraFrame);
 micBtn.addEventListener('click', toggleMicrophone);
 fullscreenBtn.addEventListener('click', openFullscreen);
 
+videoFeed.addEventListener('load', () => setSensorStatus('camera', true));
+videoFeed.addEventListener('error', () => setSensorStatus('camera', false));
+
 renderMetricCards();
 renderEvents();
 renderSensors();
 renderMessages();
 setConnected(false);
-sensorStatusState.camera = true;
-sensorStatusState.microphone = true;
-renderSensors();
 refreshLatestMetrics();
 latestMetricsTimer = window.setInterval(refreshLatestMetrics, 1000);
 
