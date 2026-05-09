@@ -224,85 +224,21 @@ function setConnected(connected) {
   liveIndicatorText.textContent = connected ? 'En viu' : 'Esperant backend';
 }
 
-function scheduleReconnect() {
-  if (state.reconnectTimer) {
-    clearTimeout(state.reconnectTimer);
-  }
-  state.reconnectTimer = window.setTimeout(connectWebSocket, 3000);
-}
+let latestMetricsTimer = null;
 
-function connectWebSocket() {
+async function refreshLatestMetrics() {
   try {
-    if (state.ws) {
-      state.ws.onopen = null;
-      state.ws.onclose = null;
-      state.ws.onerror = null;
-      state.ws.onmessage = null;
-      try { state.ws.close(); } catch (error) {}
+    const response = await fetch('/api/latest', { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error('No s\'han pogut llegir les dades més recents');
     }
-    state.ws = new WebSocket('ws://localhost:8000/ws');
+
+    const payload = await response.json();
+    applySensorPayload(payload);
+    setConnected(true);
   } catch (error) {
     setConnected(false);
-    scheduleReconnect();
-    return;
   }
-
-  state.ws.onopen = () => {
-    setConnected(true);
-    if (state.reconnectTimer) {
-      clearTimeout(state.reconnectTimer);
-      state.reconnectTimer = null;
-    }
-  };
-
-  state.ws.onmessage = (event) => {
-    let payload;
-    try {
-      payload = JSON.parse(event.data);
-    } catch (error) {
-      return;
-    }
-
-    if (payload.type === 'sensors' && payload.data) {
-      applySensorPayload(payload.data);
-      return;
-    }
-
-    if (payload.type === 'event' && payload.data) {
-      pushEvent(payload.data);
-      return;
-    }
-
-    if (payload.type === 'park_message' && payload.data?.text) {
-      addMessage('bot', payload.data.text);
-      return;
-    }
-
-    if (payload.type === 'sensor_status' && payload.data) {
-      applySensorStatus(payload.data);
-      return;
-    }
-
-    if (payload.type === 'detection' && payload.data) {
-      const label = payload.data.category ? String(payload.data.category) : 'activitat';
-      const confidence = typeof payload.data.confidence === 'number' ? ` (${Math.round(payload.data.confidence * 100)}%)` : '';
-      pushEvent({
-        level: payload.data.confidence >= 0.85 ? 'warning' : 'normal',
-        title: `Detecció de ${label}${confidence}`,
-        zone: 'Detecció automàtica',
-        time: 'Ara mateix'
-      });
-    }
-  };
-
-  state.ws.onerror = () => {
-    setConnected(false);
-  };
-
-  state.ws.onclose = () => {
-    setConnected(false);
-    scheduleReconnect();
-  };
 }
 
 function applySensorPayload(data) {
@@ -480,11 +416,12 @@ renderEvents();
 renderSensors();
 renderMessages();
 setConnected(false);
-connectWebSocket();
+refreshLatestMetrics();
+latestMetricsTimer = window.setInterval(refreshLatestMetrics, 1000);
 
 window.addEventListener('beforeunload', () => {
-  if (state.reconnectTimer) {
-    clearTimeout(state.reconnectTimer);
+  if (latestMetricsTimer) {
+    clearInterval(latestMetricsTimer);
   }
   if (state.ws) {
     try { state.ws.close(); } catch (error) {}
