@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Parc Viu Digital Twin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">
+        <h1>Twin Digital del Parc</h1>
+        <p>Monitoratge en temps real de la Càmera Central, sensors i comunicacions del parc.</p>
+      </div>
+      <div id="wsStatus" class="ws-pill is-offline" aria-live="polite">
+        <span class="ws-dot"></span>
+        <span id="wsStatusText">Desconnectat</span>
+      </div>
+    </div>
+
+    <section class="grid-top">
+      <article class="card camera-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7h8l2 3h6v9H4z"></path><path d="M8 10h.01"></path><circle cx="12" cy="14" r="3"></circle></svg>
+            </span>
+            <span>Càmera Central — Entrada Principal</span>
+          </div>
+          <div id="liveIndicator" class="live-pill is-offline">
+            <span class="pulse"></span>
+            <span id="liveIndicatorText">En viu</span>
+          </div>
+        </div>
+        <div class="camera-body">
+          <div class="camera-frame">
+            <img id="videoFeed" class="camera-feed" src="http://localhost:8000/video_feed" alt="Flux de la càmera central">
+            <div class="camera-controls">
+              <button id="captureBtn" class="icon-button" type="button" aria-label="Captura de pantalla">
+                <svg viewBox="0 0 24 24"><path d="M7 7h3l2-2h2l2 2h3v11H7z"></path><circle cx="12" cy="13.5" r="3"></circle></svg>
+              </button>
+              <button id="micBtn" class="icon-button" type="button" aria-label="Activar o desactivar el micròfon">
+                <svg id="micIcon" viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V8a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3z"></path><path d="M5 12a7 7 0 0 0 14 0"></path><path d="M12 19v3"></path></svg>
+              </button>
+              <button id="fullscreenBtn" class="icon-button" type="button" aria-label="Pantalla completa">
+                <svg viewBox="0 0 24 24"><path d="M4 9V4h5"></path><path d="M20 9V4h-5"></path><path d="M4 15v5h5"></path><path d="M20 15v5h-5"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card ambient-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16h.01"></path></svg>
+            </span>
+            <span>Condicions Ambientals</span>
+          </div>
+          <div class="card-subtitle">Dades ambientals sincronitzades amb el WebSocket</div>
+        </div>
+        <div class="card-content">
+          <div id="ambientGrid" class="ambient-grid"></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid-bottom">
+      <div class="stack">
+        <article class="card report-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="section-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"></path><path d="M14 3v5h5"></path></svg>
+              </span>
+              <span>Generar Informe</span>
+            </div>
+          </div>
+          <div class="card-content report-body">
+            <div class="report-copy">Descarrega un informe complet amb totes les dades recollides del parc.</div>
+            <button id="reportBtn" class="primary-button" type="button">
+              <svg viewBox="0 0 24 24"><path d="M12 3v10"></path><path d="M8 10l4 4 4-4"></path><path d="M5 19h14"></path></svg>
+              <span>Descarrega l'informe</span>
+            </button>
+          </div>
+        </article>
+
+        <article class="card events-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="section-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M7 4h10v16H7z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path><path d="M9 16h4"></path></svg>
+              </span>
+              <span>Events Recents</span>
+            </div>
+          </div>
+          <div class="card-content">
+            <div id="eventList" class="event-list"></div>
+            <div class="events-footer">
+              <a href="#" class="text-link">Veure tots els events</a>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <article class="card chat-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"></path><path d="M8 10h8"></path></svg>
+            </span>
+            <span>Chatbot ParcBot</span>
+          </div>
+          <div id="chatStatus" class="online-pill">
+            <span class="pulse"></span>
+            <span>En línia</span>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="quick-actions">
+            <button class="quick-chip" type="button" data-question="Quins han estat els pics de soroll avui?">Quins han estat els pics de soroll avui?</button>
+            <button class="quick-chip" type="button" data-question="Hi ha hagut events inusuals?">Hi ha hagut events inusuals?</button>
+            <button class="quick-chip" type="button" data-question="Com està la qualitat de l'aire?">Com està la qualitat de l'aire?</button>
+          </div>
+          <div id="chatThread" class="chat-thread" aria-live="polite"></div>
+          <form id="chatForm" class="chat-form">
+            <input id="chatInput" class="chat-input" type="text" placeholder="Escriu la teva pregunta..." autocomplete="off">
+            <button class="primary-button chat-send" type="submit">Enviar</button>
+          </form>
+        </div>
+      </article>
+
+      <article class="card sensor-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3v18"></path><path d="M7 8h10"></path><path d="M7 16h10"></path><path d="M9 12h6"></path></svg>
+            </span>
+            <span>Estat dels Sensors</span>
+          </div>
+        </div>
+        <div class="card-content">
+          <div id="sensorList" class="sensor-list"></div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <footer class="footer-bar" aria-label="Barra de logos institucionals">
+    <div class="footer-inner">
+      <div>Desenvolupat amb</div>
+      <div class="footer-center">
+        <a class="footer-logo" href="https://www.arduino.cc/" target="_blank" rel="noreferrer noopener" aria-label="Arduino">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Arduino_Logo.svg" alt="Arduino">
+        </a>
+        <span class="footer-divider" aria-hidden="true"></span>
+        <a class="footer-logo" href="https://www.qualcomm.com/" target="_blank" rel="noreferrer noopener" aria-label="Qualcomm">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/9/9c/Qualcomm-Logo.svg" alt="Qualcomm">
+        </a>
+        <span class="footer-divider" aria-hidden="true"></span>
+        <span class="footer-logo text-logo" aria-label="Interhack Barcelona">INTERHACK BCN</span>
+        <span class="footer-divider" aria-hidden="true"></span>
+        <span class="footer-logo text-logo" aria-label="Barcelona Activa">Barcelona Activa</span>
+      </div>
+      <div>Parc de la Ciutadella © 2025</div>
+    </div>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
