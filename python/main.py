@@ -32,6 +32,7 @@ def on_get_latest():
         "temp": temperature[2] if temperature else None,
         "humidity": humidity[2] if humidity else None,
         "light": light[2] if light else None,
+        "trash": None,
         "timestamp": temperature[1] if temperature else None,
     }
 

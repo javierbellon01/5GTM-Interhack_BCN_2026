@@ -15,11 +15,12 @@ const micIcon = document.getElementById('micIcon');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 const videoFeed = document.getElementById('videoFeed');
 
-const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', noise: 'dB', people: 'pers.' };
+const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', trash: '%', noise: 'dB', people: 'pers.' };
 const sensorLabels = {
   temp: 'Temperature',
   humidity: 'Humidity',
   light: 'Light',
+  trash: 'Trash',
   noise: 'Noise',
   people: 'People'
 };
@@ -27,13 +28,16 @@ const sensorColors = {
   temp: '#2d8fcb',
   humidity: '#2d8fcb',
   light: '#2d8fcb',
+  trash: '#8b5e34',
   noise: '#2d8fcb',
   people: '#2d8fcb'
 };
+const metricKeys = ['temp', 'humidity', 'light', 'trash'];
 const metricHistory = {
   temp: [],
   humidity: [],
   light: [],
+  trash: [],
   noise: [],
   people: []
 };
@@ -41,9 +45,23 @@ const metricTrend = {
   temp: null,
   humidity: null,
   light: null,
+  trash: null,
   noise: null,
   people: null
 };
+const metricStatusState = {
+  temp: false,
+  humidity: false,
+  light: false,
+  trash: false
+};
+const metricLastSeenAt = {
+  temp: null,
+  humidity: null,
+  light: null,
+  trash: null
+};
+const metricHeartbeatTimeoutMs = 2500;
 const sensorStatusState = {};
 const sensorStatusLabels = [
   { key: 'temp', label: 'Temperature Sensor', icon: 'thermometer' },
@@ -112,15 +130,17 @@ function sparklinePoints(values, width, height) {
 function metricCardTemplate(key) {
   const value = state.metrics[key];
   const trend = metricTrend[key];
-  const trendClass = trend >= 0 ? 'trend-up' : 'trend-down';
-  const trendArrow = trend >= 0 ? '↗' : '↘';
+  const connected = metricStatusState[key] === true;
+  const trendClass = connected ? (trend >= 0 ? 'trend-up' : 'trend-down') : '';
+  const trendArrow = connected ? (trend >= 0 ? '↗' : '↘') : '—';
   return `
-    <article class="metric-card" data-metric-card="${key}">
+    <article class="metric-card ${connected ? '' : 'is-disconnected'}" data-metric-card="${key}">
       <div class="metric-topline">
         <div class="metric-label">${sensorLabels[key]}</div>
+        <div id="metricStatus-${key}" class="metric-status ${connected ? 'status-ok' : 'status-error'}">${connected ? 'Connected' : 'No conectado'}</div>
       </div>
       <div class="metric-value-row">
-        <div id="metricValue-${key}" class="metric-value">${formatMetricValue(key, value)}</div>
+        <div id="metricValue-${key}" class="metric-value">${connected ? formatMetricValue(key, value) : '—'}</div>
         <div class="metric-unit">${sensorUnits[key]}</div>
       </div>
       <svg class="metric-sparkline" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
@@ -129,32 +149,40 @@ function metricCardTemplate(key) {
       </svg>
       <div id="metricTrend-${key}" class="metric-trend ${trendClass}">
         <span class="trend-arrow">${trendArrow}</span>
-        <span>${formatTrend(trend)}</span>
+        <span>${connected ? formatTrend(trend) : 'No conectado'}</span>
       </div>
     </article>
   `;
 }
 
 function renderMetricCards() {
-  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'noise', 'people'].map(metricCardTemplate).join('');
-  ['temp', 'humidity', 'light', 'noise', 'people'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
+  ambientGrid.innerHTML = metricKeys.map(metricCardTemplate).join('');
+  metricKeys.forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
 }
 
 function updateMetricVisuals(key, value, pulse = true) {
   const valueNode = document.getElementById(`metricValue-${key}`);
   const trendNode = document.getElementById(`metricTrend-${key}`);
   const lineNode = document.getElementById(`spark-${key}`);
-  if (!valueNode || !trendNode || !lineNode) return;
+  const statusNode = document.getElementById(`metricStatus-${key}`);
+  const cardNode = valueNode?.closest('[data-metric-card]');
+  if (!valueNode || !trendNode || !lineNode || !statusNode || !cardNode) return;
 
-  valueNode.textContent = formatMetricValue(key, value);
-  trendNode.textContent = 'Waiting for backend data';
+  const connected = metricStatusState[key] === true;
+
+  valueNode.textContent = connected ? formatMetricValue(key, value) : '—';
+  statusNode.textContent = connected ? 'Connected' : 'No conectado';
+  statusNode.classList.toggle('status-ok', connected);
+  statusNode.classList.toggle('status-error', !connected);
+  cardNode.classList.toggle('is-disconnected', !connected);
+  trendNode.textContent = connected ? 'Waiting for backend data' : 'No conectado';
   valueNode.classList.remove('flash');
   if (pulse) {
     valueNode.classList.add('flash');
     window.setTimeout(() => valueNode.classList.remove('flash'), 220);
   }
 
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+  if (!connected || value === null || value === undefined || Number.isNaN(Number(value))) {
     lineNode.setAttribute('points', '');
     lineNode.previousElementSibling?.setAttribute('points', '');
     return;
@@ -177,6 +205,24 @@ function updateMetricVisuals(key, value, pulse = true) {
   trendNode.classList.toggle('trend-up', delta >= 0);
   trendNode.classList.toggle('trend-down', delta < 0);
   trendNode.innerHTML = `<span class="trend-arrow">${delta >= 0 ? '↗' : '↘'}</span><span>${formatTrend(delta)}</span>`;
+}
+
+function syncMetricConnectivity() {
+  let changed = false;
+  const now = Date.now();
+
+  metricKeys.forEach((key) => {
+    const lastSeen = metricLastSeenAt[key];
+    const connected = typeof lastSeen === 'number' && now - lastSeen <= metricHeartbeatTimeoutMs;
+    if (metricStatusState[key] !== connected) {
+      metricStatusState[key] = connected;
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    renderMetricCards();
+  }
 }
 
 function renderEvents() {
@@ -237,6 +283,7 @@ function setConnected(connected) {
 }
 
 let latestMetricsTimer = null;
+let metricHeartbeatTimer = null;
 
 async function refreshLatestMetrics() {
   try {
@@ -248,13 +295,34 @@ async function refreshLatestMetrics() {
     const payload = await response.json();
     applySensorPayload(payload);
     setConnected(true);
+    syncMetricConnectivity();
   } catch (error) {
     setConnected(false);
   }
 }
 
 function applySensorPayload(data) {
-  ['temp', 'humidity', 'light', 'noise', 'people'].forEach((key) => {
+  const now = Date.now();
+
+  metricKeys.forEach((key) => {
+    if (typeof data[key] !== 'undefined' && data[key] !== null) {
+      const numericValue = Number(data[key]);
+      if (!Number.isNaN(numericValue)) {
+        metricLastSeenAt[key] = now;
+        metricStatusState[key] = true;
+        state.metrics[key] = numericValue;
+        metricHistory[key].push(numericValue);
+        if (metricHistory[key].length > 18) {
+          metricHistory[key].shift();
+        }
+        const previous = metricHistory[key][metricHistory[key].length - 2];
+        metricTrend[key] = typeof previous === 'number' ? numericValue - previous : null;
+        updateMetricVisuals(key, numericValue, true);
+      }
+    }
+  });
+
+  ['noise', 'people'].forEach((key) => {
     if (typeof data[key] !== 'undefined') {
       sensorStatusState[key] = true;
       state.metrics[key] = Number(data[key]);
@@ -275,7 +343,14 @@ function applySensorStatus(data) {
     if (key in sensorStatusState || sensorStatusLabels.some((sensor) => sensor.key === key)) {
       sensorStatusState[key] = value === true || value === 'connected';
     }
+    if (key in metricStatusState) {
+      metricStatusState[key] = value === true || value === 'connected';
+      if (metricStatusState[key]) {
+        metricLastSeenAt[key] = Date.now();
+      }
+    }
   });
+  renderMetricCards();
   renderSensors();
 }
 
@@ -434,10 +509,14 @@ renderMessages();
 setConnected(false);
 refreshLatestMetrics();
 latestMetricsTimer = window.setInterval(refreshLatestMetrics, 1000);
+metricHeartbeatTimer = window.setInterval(syncMetricConnectivity, 500);
 
 window.addEventListener('beforeunload', () => {
   if (latestMetricsTimer) {
     clearInterval(latestMetricsTimer);
+  }
+  if (metricHeartbeatTimer) {
+    clearInterval(metricHeartbeatTimer);
   }
   if (state.ws) {
     try { state.ws.close(); } catch (error) {}

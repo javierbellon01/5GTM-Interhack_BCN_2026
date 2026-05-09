@@ -324,6 +324,11 @@ img { display: block; max-width: 100%; }
   gap: 10px;
 }
 
+.metric-card.is-disconnected {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 248, 250, 0.95));
+  opacity: 0.9;
+}
+
 .metric-card.is-empty {
   place-items: center;
 }
@@ -340,6 +345,12 @@ img { display: block; max-width: 100%; }
   font-size: 13px;
 }
 
+.metric-status {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .metric-value-row {
   display: flex;
   align-items: baseline;
@@ -352,6 +363,11 @@ img { display: block; max-width: 100%; }
   font-weight: 600;
   letter-spacing: -0.03em;
   transition: color 200ms ease, transform 200ms ease, opacity 200ms ease;
+}
+
+.metric-card.is-disconnected .metric-value,
+.metric-card.is-disconnected .metric-sparkline {
+  opacity: 0.45;
 }
 
 .metric-unit {
@@ -397,6 +413,10 @@ img { display: block; max-width: 100%; }
 
 .trend-up { color: var(--ok); }
 .trend-down { color: var(--alert); }
+
+.metric-card.is-disconnected .metric-trend {
+  color: var(--muted);
+}
 
 .card-content { padding: 16px 18px 18px; }
 
