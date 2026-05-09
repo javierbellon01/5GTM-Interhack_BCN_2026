@@ -1,0 +1,6 @@
+name: 5GTM-Interhack_BCN_2026
+description: <a id="readme-top"></a>
+ports: []
+bricks:
+- arduino:web_ui: {}
+icon: 😀
