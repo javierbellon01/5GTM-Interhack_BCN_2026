@@ -130,7 +130,7 @@ function metricCardTemplate(key) {
       </div>
       <svg class="metric-sparkline" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
         <polyline class="spark-glow" points=""></polyline>
-        <polyline id="spark-${key}" points=""></polyline>
+        <polyline id="spark-${key}" class="spark-line" points=""></polyline>
       </svg>
       <div id="metricTrend-${key}" class="metric-trend ${trendClass}">
         <span class="trend-arrow">${trendArrow}</span>
