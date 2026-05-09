@@ -91,7 +91,7 @@ img { display: block; max-width: 100%; }
 
 .ws-pill.is-offline .ws-dot {
   background: var(--alert);
-  box-shadow: 0 0 0 4px rgba(168, 71, 60, 0.14);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
 }
 
 .grid-top,
@@ -559,7 +559,7 @@ img { display: block; max-width: 100%; }
 
 .event-alert .event-icon {
   background: var(--alert);
-  box-shadow: 0 0 0 4px rgba(168, 71, 60, 0.12);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
 }
 
 .event-title {
