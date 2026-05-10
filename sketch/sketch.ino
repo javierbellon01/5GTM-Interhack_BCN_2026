@@ -39,19 +39,22 @@ void loop() {
     light.update();
     lightlevel = light.getAL();
     
-    // // Get colour approximation
-    // String colourName = light.getColorApproximate();
-    
-    // // Get RGB values
-    // ModulinoColor colour = light.getColor();
-    // int r = (0xFF000000 & colour) >> 24;
-    // int g = (0x00FF0000 & colour) >> 16;
-    // int b = (0x0000FF00 & colour) >> 8;
-    
-    // // Get light intensity values
-    // int lux = light.getAL();              // Ambient light (raw)
-    // int luxCalibrated = light.getLux();   // Calibrated lux
-    // int ir = light.getIR();               // Infrared level
+    // --- ADD THIS RECOVERY LOGIC ---
+    // If any sensor returns NaN, the I2C bus or a sensor has failed/disconnected.
+    if (isnan(celsius) || isnan(humidity) || isnan(lightlevel)) {
+        
+        // 1. Reset the entire Modulino I2C bus to clear any lockups
+        Modulino.begin(Wire1); 
+        
+        // 2. Re-initialize the specific sensors that failed
+        if (isnan(celsius) || isnan(humidity)) {
+            thermo.begin(); 
+        }
+        if (isnan(lightlevel)) {
+            light.begin();
+        }
+    }
+    // --------------------------------
 
     Bridge.notify("record_sensor_samples", celsius, humidity, lightlevel);
   }
