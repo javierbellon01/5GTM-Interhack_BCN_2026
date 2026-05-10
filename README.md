@@ -132,7 +132,7 @@
 
 ## Problem Definition
 
-Barcelona's parks have no voice. Parc Viu is a real-time monitoring system that gives awareness, personality, and its own voice to the Parc de la Ciutadella.
+Barcelona's parks have no voice. Parc Viu is a real-time monitoring system that gives awareness, personality, and its own voice to the Parc Central de Nou Barris.
 
 The real problem is that Barcelona has many parks operating in the dark, without real-time monitoring. Incident detection, from vandalism to overflowing trash, still depends on citizens manually reporting problems. That reactive model delays maintenance and wastes public resources.
 
