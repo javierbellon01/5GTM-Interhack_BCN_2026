@@ -91,10 +91,11 @@ The technical architecture is split between Edge Computing and a Centralized Orc
 
 1. Power on the Arduino Q1 and ensure it connects to the local Wi-Fi network.
 2. Run the FastAPI server on the orchestrator computer/Arduino Q1.
-3. Open the web dashboard in your browser.
-4. View real-time environmental and acoustic metrics.
-5. Click the **"Descarrega l'informe"** button to trigger the LLM to interpret the latest JSON payload and provide an immediate summary of the park's condition.
-6. Ask any question about the data to the chatbot.
+3. Run the FastAPI AI router in `python/ai_router.py` so it listens on `http://localhost:8000` and can call Ollama locally.
+4. Open the web dashboard in your browser.
+5. View real-time environmental and acoustic metrics.
+6. Click the **"Descarrega l'informe"** button to trigger the LLM to interpret the latest JSON payload and provide an immediate summary of the park's condition.
+7. Ask any question about the data to the chatbot.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
