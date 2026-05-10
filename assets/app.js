@@ -432,22 +432,24 @@ async function sendChatMessage(text) {
   chatInput.value = '';
 
   try {
-    const sensorData = formatSensorDataForStatus();
-    const response = await fetch('http://localhost:8000/status', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: sensorData,
-        question: trimmed
-      })
+      body: JSON.stringify({ text: trimmed })
     });
 
     if (!response.ok) {
       throw new Error('API response not ok');
     }
 
-    const jsonData = await response.json();
-    const replyText = jsonData.response || 'I could not generate a response.';
+    const contentType = response.headers.get('content-type') || '';
+    let replyText = 'He rebut la teva petició i l’estic processant.';
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      replyText = data.reply || data.text || data.message || replyText;
+    } else {
+      replyText = await response.text();
+    }
 
     addMessage('bot', replyText);
   } catch (error) {
@@ -462,28 +464,27 @@ async function downloadReport() {
     }
 
     const reportData = buildReportData();
-    
+
     try {
       const sensorData = formatSensorDataForReport();
-      const llmResponse = await fetch('http://localhost:8000/report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: sensorData })
+      const llmResponse = await fetch('/api/report', {
+        method: 'GET'
       });
-      
+
       if (llmResponse.ok) {
         const llmData = await llmResponse.json();
-        reportData.llmSummary = llmData.response || '';
+        reportData.llmSummary = llmData.message || llmData.response || '';
       }
     } catch (error) {
       console.log('LLM summary not available:', error);
     }
-    
+
     window.createParkReportPdf(reportData);
   } catch (error) {
     addMessage('bot', 'The report could not be generated right now.');
   }
 }
+
 
 function captureCameraFrame() {
   window.open(cameraStreamUrl, '_blank', 'noreferrer');

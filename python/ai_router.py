@@ -6,7 +6,7 @@ from pydantic import BaseModel
 app = FastAPI(title="Park Management AI API")
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "phi3:latest"
+MODEL_NAME = "tiger"
 
 
 class StatusRequest(BaseModel):
