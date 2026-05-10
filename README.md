@@ -266,6 +266,12 @@ The data manager maintains state and event history. It keeps the latest metrics,
 
 ### Image Acquisition
 
+#### Camera Point Used for Analysis
+
+The model was trained and evaluated from a single fixed camera position. That is the same point of view used in the live deployment, so the network learns the exact geometry of the scene instead of trying to generalize to multiple angles.
+
+![Fixed camera point used for analysis](docs_assets/fixed_camera_point.jpg)
+
 #### One Focus
 
 The dataset uses a single fixed point of view on purpose. For a static installation, specialization matters more than generalization. A camera that never moves should learn one scene deeply rather than many scenes weakly.
@@ -283,6 +289,12 @@ The tradeoff is clear: the model is not meant for arbitrary camera swaps without
 Synthetic image generation complements real photography. It helps expand the dataset without requiring endless manual collection and labeling.
 
 The idea is to keep the background fixed and vary only the dynamic elements: litter, people, dogs, and occasional park objects. That teaches the model to pay attention to anomalies, not to scene noise.
+
+#### Training Example
+
+The synthetic training example below shows the kind of controlled image used to teach the detector what the park scene looks like when the relevant objects appear in front of the fixed background.
+
+![Example used to train the image recognition model](docs_assets/training_image.png)
 
 #### AI Prompts
 
