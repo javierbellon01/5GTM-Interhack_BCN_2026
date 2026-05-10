@@ -8,12 +8,12 @@
   <p align="center">
     An intelligent, edge-AI powered park monitoring system built for the 5GTM Interhack Barcelona 2026.
     <br />
-    <a href="https://github.com/your_username/5GTM-Interhack_BCN_2026"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/javierbellon01/5GTM-Interhack_BCN_2026.git"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/your_username/5GTM-Interhack_BCN_2026/issues">Report Bug</a>
+    <a href="https://github.com/javierbellon01/5GTM-Interhack_BCN_2026.git">Report Bug</a>
     ·
-    <a href="https://github.com/your_username/5GTM-Interhack_BCN_2026/issues">Request Feature</a>
+    <a href="https://github.com/javierbellon01/5GTM-Interhack_BCN_2026.git">Request Feature</a>
   </p>
 </div>
 
@@ -162,6 +162,8 @@ Citizens can talk to the park through ParcBot. The park can answer direct questi
 ## Model Architecture
 
 The architecture is split into acquisition, edge processing, backend analysis, and local response generation.
+
+![General architecture](docs_assets/general_archiecture.png)
 
 1. Perception captures webcam frames and sensor values.
 2. Edge processing on the Arduino UNO Q normalizes and forwards telemetry.
@@ -424,7 +426,7 @@ The goal is not to show everything everywhere. The goal is to surface the right 
 
 Contact any of the contributors for more information.
 
-Project Link: [https://github.com/your_username/5GTM-Interhack_BCN_2026](https://github.com/your_username/5GTM-Interhack_BCN_2026)
+Project Link: [https://github.com/javierbellon01/5GTM-Interhack_BCN_2026.git](https://github.com/javierbellon01/5GTM-Interhack_BCN_2026.git)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
