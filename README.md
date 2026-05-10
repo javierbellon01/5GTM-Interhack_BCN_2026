@@ -395,11 +395,9 @@ The goal is not to show everything everywhere. The goal is to surface the right 
 
 ### Built With
 
-* [![FastAPI][FastAPI.com]][FastAPI-url]
-* [![JavaScript][JS.com]][JS-url]
-* [![HTML5][HTML.com]][HTML-url]
-* [![Edge Impulse][EdgeImpulse.com]][EdgeImpulse-url]
-* Arduino (C++)
+* JavaScript and HTML5 for the dashboard and interface.
+* Edge Impulse for the computer vision model.
+* Arduino C++ for the edge runtime and sensor bridge.
 
 ### Next Steps
 
@@ -421,8 +419,6 @@ Project Link: [https://github.com/your_username/5GTM-Interhack_BCN_2026](https:/
 ## Acknowledgments
 
 * [Edge Impulse](https://edgeimpulse.com/)
-* [FastAPI](https://fastapi.tiangolo.com/)
 * [5GTM Interhack BCN](https://example.com)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-[EdgeImpulse.com]: https://img.shields.io/badge/Edge_Impulse-FFFFFF?style=for-the-badge&logo=edgeimpulse&logoColor=black
