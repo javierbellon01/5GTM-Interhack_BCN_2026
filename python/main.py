@@ -24,7 +24,7 @@ def ask_llm(prompt: str) -> str:
     }
 
     try:
-        r = requests.post(OLLAMA_URL, json=payload, timeout=60)
+        r = requests.post(OLLAMA_URL, json=payload, timeout=120)
         r.raise_for_status()
         data = r.json()
         return data["message"]["content"]
@@ -134,13 +134,13 @@ def on_report():
     latest = on_get_latest()
 
     prompt = f"""
-Genera un informe ambiental breu i formal basat en aquestes dades:
+Generate a brief and formal environmental report based on these data:
 
-Temperature: {latest['temp']}
-Humidity: {latest['humidity']}
-Light level: {latest['light']}
-People detected: {latest['person']}
-Trash detected: {latest['trash_counter']}
+temperature: {latest['temp']}
+humidity: {latest['humidity']}
+light level: {latest['light']}
+people detected: {latest['person']}
+trash detected: {latest['trash_counter']}
 
 """
 
