@@ -26,26 +26,26 @@
     <li><a href="#constraints">Constraints</a></li>
     <li><a href="#our-proposal">Our Proposal</a></li>
     <li><a href="#model-architecture">Model Architecture</a></li>
-    <li><a href="#perception">Perception</a></li>
+    <li><a href="#general-concepts">General Concepts</a></li>
+    <li><a href="#ai-llm-and-image-recognition">AI, LLM and Image Recognition</a></li>
     <li><a href="#edge-processing">Edge Processing</a></li>
+    <li><a href="#inside-arduino">Inside Arduino</a></li>
     <li><a href="#python-backend">Python Backend</a></li>
+    <li><a href="#image-acquisition">Image Acquisition</a></li>
+    <li><a href="#synthetic-image-generation">Image Generation by AI</a></li>
     <li><a href="#llm-engine">LLM Engine</a></li>
     <li><a href="#response-router-local-llm--ui-sync">Response Router</a></li>
     <li><a href="#digital-twin">Digital Twin</a></li>
     <li><a href="#real-time-streaming-classification">Real Time Streaming Classification</a></li>
     <li><a href="#sensor-status">Sensor Status</a></li>
     <li><a href="#environmental-conditions-dashboards">Environmental Conditions</a></li>
-    <li><a href="#image-acquisition">Image Acquisition</a></li>
-    <li><a href="#synthetic-image-generation">Image Generation by AI</a></li>
-    <li><a href="#ai-prompts">AI Prompts</a></li>
     <li><a href="#database">Database</a></li>
-    <li><a href="#inside-arduino">Inside Arduino</a></li>
     <li><a href="#report">Report</a></li>
     <li><a href="#rules-llm">Definicion de Rules LLM</a></li>
     <li><a href="#container-isolation-networking-system">Container Isolation Networking System</a></li>
-    <li><a href="#use-of-interface">Use of Interface</a></li>
+    <li><a href="#application">Application</a></li>
     <li><a href="#built-with">Built With</a></li>
-     <li><a href="#next-steps">Next Steps</a></li>
+    <li><a href="#next-steps">Next Steps</a></li>
     <li><a href="#contact">Contact</a></li>
     <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
@@ -326,6 +326,12 @@ Based on this data: {data}. Generate the report. REPORT MODE
 
 This mode prioritizes synthesis, incidents, anomalies, and maintenance notes.
 
+#### Chatbot Output Example
+
+The chatbot interface shows real-time responses from the LLM engine based on park data:
+
+![Chatbot output with ParcBot responses](docs_assets/chatbot_output.png)
+
 ### Response Router: Local LLM & UI Sync
 
 The response router keeps the language model and the interface in step. It decides whether the output should become a chatbot reply, a report card, or a UI refresh. That separation keeps the system responsive and prevents the model from owning presentation logic.
@@ -373,6 +379,12 @@ The report output should cover three things:
 
 That keeps the report useful both for operators and for future iterations of the project.
 
+#### Report Example
+
+The report output provides a structured summary of detected problems, required actions, and system limitations:
+
+![Report output with park status summary](docs_assets/report_output.png)
+
 ### Definicion de Rules LLM
 
 The local model follows two simple rules.
@@ -406,6 +418,12 @@ The goal is not to show everything everywhere. The goal is to surface the right 
 5. View the live camera stream, the sensor status cards, and the digital twin panels.
 6. Use ParcBot ChatBot to query the current park status.
 7. Generate a report when you need a summary of problems, solutions, and limitations.
+
+#### Live Dashboard Example
+
+The dashboard displays real-time video with object detection (showing person and trash counts) alongside live sensor monitoring data:
+
+![Live dashboard with object detection and sensor monitoring](docs_assets/output_sensors_webcam_detaction.png)
 
 ### Built With
 
