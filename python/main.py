@@ -12,7 +12,7 @@ from arduino.app_utils import App, Bridge
 #  OLLAMA — PURE HTTP CLIENT (NO PIP REQUIRED)
 # ============================================================
 
-OLLAMA_URL = "http://10.63.0.150:11434/api/chat"
+OLLAMA_URL = "http://10.12.52.210:11434/api/chat"
 
 def ask_llm(prompt: str) -> str:
     payload = {
