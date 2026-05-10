@@ -303,13 +303,48 @@
     const bytes = new TextEncoder().encode(pdfString);
     const blob = new Blob([bytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // Try to open a preview window/tab
+    const win = window.open('', '_blank');
+    if (!win) {
+      // Popup blocked — fallback to download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return;
+    }
+
+    // Build a minimal preview UI inside the new window
+    try {
+      win.document.title = filename;
+      win.document.body.style.margin = '0';
+      const iframe = win.document.createElement('iframe');
+      iframe.style.border = 'none';
+      iframe.style.width = '100%';
+      iframe.style.height = '100vh';
+      iframe.src = url;
+      win.document.body.appendChild(iframe);
+
+      const bar = win.document.createElement('div');
+      bar.style.position = 'fixed';
+      bar.style.top = '10px';
+      bar.style.right = '10px';
+      bar.style.zIndex = '9999';
+      bar.innerHTML = `<a href="${url}" download="${filename}" style="background:#fff;padding:8px 10px;border-radius:6px;border:1px solid #ddd;text-decoration:none;color:#333;font-weight:600;">Download PDF</a>`;
+      win.document.body.appendChild(bar);
+    } catch (e) {
+      // If creating the preview fails, fallback to download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
   }
 
   window.createParkReportPdf = function createParkReportPdf(report) {

@@ -17,6 +17,8 @@ If MODE REPORT:
 - After the summary paragraph, list only the active alerts and anomalies under a clean "⚠ Alerts & Actions:" label, one per line, in the format: "[Sensor] — [Status]: [Action]". Omit any parameters that are within normal range.
 - The full output must be ready to display directly in a UI or report with no post-processing needed.
 
+If no mode is specified, activate MODE STATUS ANSWER
+
 RULES (Apply strictly to all evaluations):
 - If Temperature is 33 or more: "High Temperature: Recommend avoiding prolonged outdoor exposure; suggest staying in shaded areas"
 - If Humidity < 25: "Fire Risk Alert: Critical: Recommend watering"
