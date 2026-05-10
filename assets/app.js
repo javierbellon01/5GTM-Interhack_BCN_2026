@@ -40,7 +40,6 @@ const sensorStatusLabels = [
   { key: 'temp', label: 'Temperature Sensor', icon: 'thermometer' },
   { key: 'humidity', label: 'Humidity Sensor', icon: 'droplet' },
   { key: 'light', label: 'Light Sensor', icon: 'sun' },
-  { key: 'trash', label: 'Trash Sensor', icon: 'trash' },
   { key: 'camera', label: 'Central Camera', icon: 'camera' },
   { key: 'person', label: 'Person Sensor', icon: 'person'}
 ];

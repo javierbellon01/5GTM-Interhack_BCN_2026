@@ -12,11 +12,11 @@ from arduino.app_utils import App, Bridge
 #  OLLAMA — PURE HTTP CLIENT (NO PIP REQUIRED)
 # ============================================================
 
-OLLAMA_URL = "http://192.168.1.164:11434/api/chat"
+OLLAMA_URL = "http://10.63.0.150:11434/api/chat"
 
 def ask_llm(prompt: str) -> str:
     payload = {
-        "model": "tiger",
+        "model": "qwen2.5.0.5b",
         "stream": False,  
         "messages": [
             {"role": "user", "content": prompt}
@@ -24,7 +24,7 @@ def ask_llm(prompt: str) -> str:
     }
 
     try:
-        r = requests.post(OLLAMA_URL, json=payload, timeout=120)
+        r = requests.post(OLLAMA_URL, json=payload, timeout=300)
         r.raise_for_status()
         data = r.json()
         return data["message"]["content"]
@@ -50,7 +50,7 @@ latest_camera_counts = {
 
 
 def update_camera_counts(detections: dict):
-    print(f"Live detections: {detections}")
+    # print(f"Live detections: {detections}")
     latest_camera_counts["person"] = len(detections.get("person", []))
     latest_camera_counts["trash"] = len(detections.get("trash", []))
 
@@ -110,16 +110,16 @@ def on_chat_message(payload: dict):
     latest = on_get_latest()
 
     prompt = f"""
-Ets un assistent del dashboard ambiental. Respon de manera breu i clara.
+You are an assistant for the ambiental dashboard. Answer in a clear and concise manner.
 
-Dades actuals:
-- Temperatura: {latest['temp']}
-- Humitat: {latest['humidity']}
-- Llum: {latest['light']}
-- Persones detectades: {latest['person']}
-- Brossa detectada: {latest['trash_counter']}
+Updated data:
+- Temperature: {latest['temp']}
+- Humidity: {latest['humidity']}
+- Light Level: {latest['light']}
+- People detected: {latest['person']}
+- Trash detected: {latest['trash_counter']}
 
-Usuari diu: "{user_text}"
+User says: "{user_text}"
 """
 
     reply = ask_llm(prompt)

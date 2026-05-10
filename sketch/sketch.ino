@@ -10,7 +10,7 @@ ModulinoThermo thermo;
 ModulinoLight light;
 
 unsigned long previousMillis = 0; 	// Stores last time values were updated
-const long interval = 1000; 		//Every second
+const long interval = 2000; 		//Every second
 
 void setup() {
   Bridge.begin();
