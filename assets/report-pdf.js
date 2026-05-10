@@ -232,12 +232,27 @@
       });
     }
 
-    textBlock(58, 114, 'LLM indications and alerts', 14, '0.18 0.33 0.24', 'F2');
-    textBlock(58, 96, 'Reserved area for AI-generated alerts, annotations, and follow-up notes.', 10, '0.32 0.32 0.32', 'F1');
-    textBlock(58, 79, 'Use this space for recommended actions, incident summaries, or warnings.', 10, '0.48 0.48 0.48', 'F1');
-    textBlock(58, 60, '______________________________________________', 10, '0.48 0.48 0.48', 'F1');
-    textBlock(58, 46, '______________________________________________', 10, '0.48 0.48 0.48', 'F1');
-    textBlock(58, 32, '______________________________________________', 10, '0.48 0.48 0.48', 'F1');
+    // Render alerts into the LLM box (up to 6 lines)
+    const alertsList = Array.isArray(report.alerts) ? report.alerts : [];
+    if (alertsList.length) {
+      textBlock(58, 120, 'LLM indications and alerts', 14, '0.18 0.33 0.24', 'F2');
+      alertsList.slice(0, 6).forEach((a, idx) => {
+        const yPos = 104 - idx * 14;
+        const title = `${a.time || ''} - ${a.title}`.trim();
+        const detail = a.detail || '';
+        textBlock(58, yPos, title, 10, '0.22 0.24 0.23', 'F1');
+        if (detail) {
+          textBlock(58, yPos - 10, detail, 9, '0.42 0.45 0.44', 'F1');
+        }
+      });
+    } else {
+      textBlock(58, 114, 'LLM indications and alerts', 14, '0.18 0.33 0.24', 'F2');
+      textBlock(58, 96, 'Reserved area for AI-generated alerts, annotations, and follow-up notes.', 10, '0.32 0.32 0.32', 'F1');
+      textBlock(58, 79, 'Use this space for recommended actions, incident summaries, or warnings.', 10, '0.48 0.48 0.48', 'F1');
+      textBlock(58, 60, '______________________________________________', 10, '0.48 0.48 0.48', 'F1');
+      textBlock(58, 46, '______________________________________________', 10, '0.48 0.48 0.48', 'F1');
+      textBlock(58, 32, '______________________________________________', 10, '0.48 0.48 0.48', 'F1');
+    }
 
     return commands;
   }

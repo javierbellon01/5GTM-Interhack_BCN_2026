@@ -67,8 +67,72 @@ const state = {
   microphoneEnabled: true,
   metrics: {},
   events: [],
+  alerts: [],
   messages: []
 };
+
+function pushAlert(alert) {
+  const item = {
+    level: alert.level || 'warning',
+    title: alert.title || 'Alert',
+    detail: alert.detail || '',
+    time: alert.time || new Date().toLocaleString()
+  };
+  state.alerts.unshift(item);
+  // keep small
+  state.alerts = state.alerts.slice(0, 8);
+  // also push to events stream for UI visibility
+  state.events.unshift({ level: item.level === 'critical' ? 'alert' : 'warning', title: item.title, zone: item.detail || 'System', time: item.time });
+  state.events = state.events.slice(0, 6);
+}
+
+function evaluateThresholds(data) {
+  // Temperature
+  if (typeof data.temp !== 'undefined' && Number(data.temp) >= 33) {
+    pushAlert({ level: 'alert', title: 'High Temperature', detail: 'Recommend avoiding prolonged outdoor exposure; suggest staying in shaded areas' });
+  }
+
+  // Humidity
+  if (typeof data.humidity !== 'undefined') {
+    const h = Number(data.humidity);
+    if (h < 25) {
+      pushAlert({ level: 'critical', title: 'Fire Risk Alert', detail: 'Critical: Recommend watering' });
+    } else if (h >= 25 && h <= 39) {
+      pushAlert({ level: 'warning', title: 'Low Humidity', detail: 'Recommend watering' });
+    } else if (h >= 40 && h <= 70) {
+      // optimal - internal log
+      pushAlert({ level: 'info', title: 'Optimal Humidity', detail: 'No action required' });
+    } else if (h >= 70 && h <= 85) {
+      pushAlert({ level: 'warning', title: 'Slippery Conditions', detail: 'Monitor surfaces for safety' });
+    } else if (h > 85) {
+      pushAlert({ level: 'warning', title: 'High Fungal Risk', detail: 'Monitor vegetation for fungal growth' });
+    }
+  }
+
+  // Trash
+  if (typeof data.trash !== 'undefined') {
+    const t = Number(data.trash);
+    if (t >= 1 && t <= 2) {
+      pushAlert({ level: 'info', title: 'Slightly Dirty', detail: 'Internal log entry' });
+    } else if (t >= 3 && t <= 5) {
+      pushAlert({ level: 'warning', title: 'Dirty', detail: 'Send notification to cleaning maintenance' });
+    } else if (t > 5) {
+      pushAlert({ level: 'alert', title: 'Highly Dirty', detail: 'Generate urgent priority alert' });
+    }
+  }
+
+  // Noise
+  if (typeof data.noise !== 'undefined') {
+    const n = Number(data.noise);
+    if (n >= 55 && n <= 65) {
+      pushAlert({ level: 'info', title: 'High Noise', detail: 'Internal log entry' });
+    } else if (n > 65 && n <= 75) {
+      pushAlert({ level: 'warning', title: 'Ordinance Violation', detail: 'Send notification/warning' });
+    } else if (n > 75) {
+      pushAlert({ level: 'alert', title: 'Incident Alert', detail: 'Activate emergency response protocol' });
+    }
+  }
+}
 
 function setSensorStatus(key, connected) {
   sensorStatusState[key] = Boolean(connected);
@@ -260,7 +324,7 @@ async function refreshLatestMetrics() {
 }
 
 function applySensorPayload(data) {
-  ['temp', 'humidity', 'light', 'noise', 'people'].forEach((key) => {
+  ['temp', 'humidity', 'light', 'noise', 'people', 'trash'].forEach((key) => {
     if (typeof data[key] !== 'undefined') {
       sensorStatusState[key] = true;
       state.metrics[key] = Number(data[key]);
@@ -273,6 +337,12 @@ function applySensorPayload(data) {
       updateMetricVisuals(key, data[key], true);
     }
   });
+    // Evaluate thresholds and push alerts/logs
+    try {
+      evaluateThresholds(data);
+    } catch (err) {
+      console.error('Threshold evaluation error', err);
+    }
   renderSensors();
 }
 
@@ -315,8 +385,43 @@ function buildReportData() {
         label: sensor.label,
         status: typeof rawStatus === 'undefined' ? 'Pending' : rawStatus ? 'Connected' : 'Disconnected'
       };
-    })
+    }),
+    alerts: state.alerts ? state.alerts.slice(0, 4) : [],
+    llmSummary: ''
   };
+}
+
+function formatSensorDataForStatus() {
+  const metrics = state.metrics;
+  return [
+    `Temp: ${metrics.temp || '?'}`,
+    `Humidity: ${metrics.humidity || '?'}`,
+    `Light: ${metrics.light || '?'}`,
+    `Noise: ${metrics.noise || '?'}`,
+    `People: ${metrics.people || '?'}`,
+    `Trash: ${metrics.trash || '?'}`
+  ].join(', ');
+}
+
+function formatSensorDataForReport() {
+  const reportData = buildReportData();
+  let data = formatSensorDataForStatus();
+  
+  if (reportData.events && reportData.events.length) {
+    data += '\n\nRecent Events:\n';
+    reportData.events.forEach(event => {
+      data += `- ${event.title} (${event.zone}) at ${event.time}\n`;
+    });
+  }
+  
+  if (reportData.alerts && reportData.alerts.length) {
+    data += '\n\nActive Alerts:\n';
+    reportData.alerts.forEach(alert => {
+      data += `- [${alert.level}] ${alert.title}: ${alert.detail}\n`;
+    });
+  }
+  
+  return data;
 }
 
 function renderMessages() {
@@ -342,24 +447,22 @@ async function sendChatMessage(text) {
   chatInput.value = '';
 
   try {
-    const response = await fetch('/api/chat', {
+    const sensorData = formatSensorDataForStatus();
+    const response = await fetch('http://localhost:8000/status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: trimmed })
+      body: JSON.stringify({
+        data: sensorData,
+        question: trimmed
+      })
     });
 
     if (!response.ok) {
-      throw new Error('Resposta no vàlida');
+      throw new Error('API response not ok');
     }
 
-    const contentType = response.headers.get('content-type') || '';
-    let replyText = 'He rebut la teva petició i l’estic processant.';
-    if (contentType.includes('application/json')) {
-      const data = await response.json();
-      replyText = data.reply || data.text || data.message || replyText;
-    } else {
-      replyText = await response.text();
-    }
+    const jsonData = await response.json();
+    const replyText = jsonData.response || 'I could not generate a response.';
 
     addMessage('bot', replyText);
   } catch (error) {
@@ -373,7 +476,25 @@ async function downloadReport() {
       throw new Error('PDF generator is not available');
     }
 
-    window.createParkReportPdf(buildReportData());
+    const reportData = buildReportData();
+    
+    try {
+      const sensorData = formatSensorDataForReport();
+      const llmResponse = await fetch('http://localhost:8000/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: sensorData })
+      });
+      
+      if (llmResponse.ok) {
+        const llmData = await llmResponse.json();
+        reportData.llmSummary = llmData.response || '';
+      }
+    } catch (error) {
+      console.log('LLM summary not available:', error);
+    }
+    
+    window.createParkReportPdf(reportData);
   } catch (error) {
     addMessage('bot', 'The report could not be generated right now.');
   }
