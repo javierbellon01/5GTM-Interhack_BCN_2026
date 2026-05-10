@@ -19,10 +19,26 @@ latest_camera_counts = {
 }
 
 SENSOR_TIMEOUT_MS = 5000
+SENSOR_STUCK_MS = 15000
 sensor_last_seen_ms = {
     "temp": None,
     "humidity": None,
     "light": None,
+}
+sensor_last_change_ms = {
+    "temp": None,
+    "humidity": None,
+    "light": None,
+}
+sensor_last_value = {
+    "temp": None,
+    "humidity": None,
+    "light": None,
+}
+SENSOR_EPSILON = {
+    "temp": 0.01,
+    "humidity": 0.01,
+    "light": 0.1,
 }
 
 
@@ -35,9 +51,33 @@ def _is_valid_value(value):
         return False
 
 
-def _read_live_value(measure_name: str, sensor_key: str, now_ms: int):
+def _is_sensor_connected(sensor_key: str, now_ms: int):
     last_seen = sensor_last_seen_ms.get(sensor_key)
+    last_change = sensor_last_change_ms.get(sensor_key)
+
     if last_seen is None or (now_ms - last_seen) > SENSOR_TIMEOUT_MS:
+        return False
+
+    if last_change is None or (now_ms - last_change) > SENSOR_STUCK_MS:
+        return False
+
+    return True
+
+
+def _update_sensor_tracking(sensor_key: str, value: float, timestamp_ms: int):
+    prev_value = sensor_last_value.get(sensor_key)
+    epsilon = SENSOR_EPSILON.get(sensor_key, 0.01)
+    was_connected = _is_sensor_connected(sensor_key, timestamp_ms)
+
+    if prev_value is None or abs(float(value) - float(prev_value)) > epsilon or not was_connected:
+        sensor_last_change_ms[sensor_key] = timestamp_ms
+
+    sensor_last_seen_ms[sensor_key] = timestamp_ms
+    sensor_last_value[sensor_key] = float(value)
+
+
+def _read_live_value(measure_name: str, sensor_key: str, now_ms: int):
+    if not _is_sensor_connected(sensor_key, now_ms):
         return None
 
     sample = db.read_last_sample(measure_name)
@@ -142,15 +182,15 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
 
     if temp_value is not None:
         db.write_sample("temperature", temp_value, timestamp)
-        sensor_last_seen_ms["temp"] = timestamp
+        _update_sensor_tracking("temp", temp_value, timestamp)
 
     if humidity_value is not None:
         db.write_sample("humidity", humidity_value, timestamp)
-        sensor_last_seen_ms["humidity"] = timestamp
+        _update_sensor_tracking("humidity", humidity_value, timestamp)
 
     if light_value is not None:
         db.write_sample("light", light_value, timestamp)
-        sensor_last_seen_ms["light"] = timestamp
+        _update_sensor_tracking("light", light_value, timestamp)
 
     db.write_sample("person", float(person_count), timestamp)
     db.write_sample("trash_counter", float(trash_count), timestamp)
@@ -163,9 +203,9 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
         "person": float(person_count),
         "trash_counter": float(trash_count),
         "sensor_status": {
-            "temp": temp_value is not None,
-            "humidity": humidity_value is not None,
-            "light": light_value is not None,
+            "temp": _is_sensor_connected("temp", timestamp),
+            "humidity": _is_sensor_connected("humidity", timestamp),
+            "light": _is_sensor_connected("light", timestamp),
         },
         "ts": timestamp,
     }

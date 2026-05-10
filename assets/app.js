@@ -273,7 +273,14 @@ function applySensorPayload(data) {
 function applySensorStatus(data) {
   Object.entries(data).forEach(([key, value]) => {
     if (key in sensorStatusState || sensorStatusLabels.some((sensor) => sensor.key === key)) {
-      sensorStatusState[key] = value === true || value === 'connected';
+      const isConnected = value === true || value === 'connected';
+      sensorStatusState[key] = isConnected;
+
+      if (!isConnected && key in state.metrics) {
+        state.metrics[key] = null;
+        metricTrend[key] = null;
+        updateMetricVisuals(key, null, true);
+      }
     }
   });
   renderSensors();
