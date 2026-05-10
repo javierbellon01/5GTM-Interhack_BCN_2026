@@ -200,7 +200,7 @@ function renderSensors() {
       <div class="sensor-row" data-sensor-row="${sensor.key}">
         <span class="sensor-mark ${pending ? 'is-pending' : connected ? 'is-connected' : 'is-disconnected'}" aria-hidden="true">${sensorIcon(sensor.icon)}</span>
         <div class="sensor-name">${escapeHtml(sensor.label)}</div>
-        <div class="sensor-status ${pending ? 'status-pending' : connected ? 'status-ok' : 'status-error'}">${pending ? 'Pending' : connected ? 'Connected' : 'Disconnected'}</div>
+        <div class="sensor-status ${pending ? 'status-pending' : connected ? 'status-ok' : 'status-error'}">${pending ? 'Pending' : connected ? 'Connected' : 'Disabled'}</div>
       </div>
     `;
   }).join('');
@@ -236,6 +236,9 @@ async function refreshLatestMetrics() {
 
     const payload = await response.json();
     applySensorPayload(payload);
+    if (payload.sensor_status) {
+      applySensorStatus(payload.sensor_status);
+    }
     setConnected(true);
   } catch (error) {
     setConnected(false);
@@ -245,15 +248,23 @@ async function refreshLatestMetrics() {
 function applySensorPayload(data) {
   ['temp', 'humidity', 'light', 'person', 'trash_counter'].forEach((key) => {
     if (typeof data[key] !== 'undefined') {
+      const rawValue = data[key];
+      if (rawValue === null || rawValue === undefined || Number.isNaN(Number(rawValue))) {
+        state.metrics[key] = null;
+        metricTrend[key] = null;
+        updateMetricVisuals(key, null, true);
+        return;
+      }
+
       sensorStatusState[key] = true;
-      state.metrics[key] = Number(data[key]);
-      metricHistory[key].push(Number(data[key]));
+      state.metrics[key] = Number(rawValue);
+      metricHistory[key].push(Number(rawValue));
       if (metricHistory[key].length > 18) {
         metricHistory[key].shift();
       }
       const previous = metricHistory[key][metricHistory[key].length - 2];
-      metricTrend[key] = typeof previous === 'number' ? Number(data[key]) - previous : null;
-      updateMetricVisuals(key, data[key], true);
+      metricTrend[key] = typeof previous === 'number' ? Number(rawValue) - previous : null;
+      updateMetricVisuals(key, rawValue, true);
     }
   });
   renderSensors();

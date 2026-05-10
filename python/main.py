@@ -1,4 +1,5 @@
 import datetime
+import math
 import time
 
 from arduino.app_bricks.dbstorage_tsstore import TimeSeriesStore
@@ -16,6 +17,34 @@ latest_camera_counts = {
     "person": 0,
     "trash": 0
 }
+
+SENSOR_TIMEOUT_MS = 5000
+sensor_last_seen_ms = {
+    "temp": None,
+    "humidity": None,
+    "light": None,
+}
+
+
+def _is_valid_value(value):
+    if value is None:
+        return False
+    try:
+        return math.isfinite(float(value))
+    except (TypeError, ValueError):
+        return False
+
+
+def _read_live_value(measure_name: str, sensor_key: str, now_ms: int):
+    last_seen = sensor_last_seen_ms.get(sensor_key)
+    if last_seen is None or (now_ms - last_seen) > SENSOR_TIMEOUT_MS:
+        return None
+
+    sample = db.read_last_sample(measure_name)
+    if not sample:
+        return None
+
+    return sample[2]
 
 # 2. Define the callback function that the camera will trigger
 def update_camera_counts(detections: dict):
@@ -44,24 +73,17 @@ def on_get_samples(resource: str, start: str, aggr_window: str):
 
 
 def on_get_latest():
+    now_ms = int(datetime.datetime.now().timestamp() * 1000)
+
     # Fetch latest from TimeSeries DB
-    temperature = db.read_last_sample("temperature")
-    humidity = db.read_last_sample("humidity")
-    light = db.read_last_sample("light")
+    temperature = _read_live_value("temperature", "temp", now_ms)
+    humidity = _read_live_value("humidity", "humidity", now_ms)
+    light = _read_live_value("light", "light", now_ms)
     person = db.read_last_sample("person")
     trash = db.read_last_sample("trash_counter")
 
     # Handle the timestamp formatting safely
-    if temperature and temperature[1]:
-        try:
-            # Parse the DB's ISO string (e.g., '2026-05-09T18:08:01.701000+00:00')
-            dt = datetime.datetime.fromisoformat(str(temperature[1]))
-        except ValueError:
-            # Fallback just in case the format is unexpected
-            dt = datetime.datetime.now()
-    else:
-        # If the database is completely empty, use current time
-        dt = datetime.datetime.now()
+    dt = datetime.datetime.now()
 
     # Format it to match "T2026-05-09_19:01:36.578" exactly
     formatted_ts = dt.strftime("T%Y-%m-%d_%H:%M:%S.%f")[:-3]
@@ -69,11 +91,16 @@ def on_get_latest():
     # Return exactly the JSON format requested
     return {
         "timestamp": formatted_ts,
-        "temp": temperature[2] if temperature else None,
-        "humidity": humidity[2] if humidity else None,
-        "light": light[2] if light else None,
+        "temp": float(temperature) if temperature is not None else None,
+        "humidity": float(humidity) if humidity is not None else None,
+        "light": float(light) if light is not None else None,
         "person": person[2] if person else 0,
-        "trash_counter": trash[2] if trash else 0
+        "trash_counter": trash[2] if trash else 0,
+        "sensor_status": {
+            "temp": temperature is not None,
+            "humidity": humidity is not None,
+            "light": light is not None,
+        },
     }
 
 
@@ -102,9 +129,6 @@ ui.expose_api("GET", "/api/report", on_report)
 
 
 def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
-    if celsius is None or humidity is None or lightlevel is None:
-        return
-
     timestamp = int(datetime.datetime.now().timestamp() * 1000)
 
     # 1. Read the latest live detections from our background state
@@ -112,19 +136,43 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
     trash_count = latest_camera_counts["trash"]
 
     # 2. Write everything to the TimeSeries DB
-    db.write_sample("temperature", float(celsius), timestamp)
-    db.write_sample("humidity", float(humidity), timestamp)
-    db.write_sample("light", float(lightlevel), timestamp)
+    temp_value = float(celsius) if _is_valid_value(celsius) else None
+    humidity_value = float(humidity) if _is_valid_value(humidity) else None
+    light_value = float(lightlevel) if _is_valid_value(lightlevel) else None
+
+    if temp_value is not None:
+        db.write_sample("temperature", temp_value, timestamp)
+        sensor_last_seen_ms["temp"] = timestamp
+    else:
+        sensor_last_seen_ms["temp"] = None
+
+    if humidity_value is not None:
+        db.write_sample("humidity", humidity_value, timestamp)
+        sensor_last_seen_ms["humidity"] = timestamp
+    else:
+        sensor_last_seen_ms["humidity"] = None
+
+    if light_value is not None:
+        db.write_sample("light", light_value, timestamp)
+        sensor_last_seen_ms["light"] = timestamp
+    else:
+        sensor_last_seen_ms["light"] = None
+
     db.write_sample("person", float(person_count), timestamp)
     db.write_sample("trash_counter", float(trash_count), timestamp)
 
     # 3. Push to Web UI via WebSockets
     payload = {
-        "temp": float(celsius),
-        "humidity": float(humidity),
-        "light": float(lightlevel),
+        "temp": temp_value,
+        "humidity": humidity_value,
+        "light": light_value,
         "person": float(person_count),
         "trash_counter": float(trash_count),
+        "sensor_status": {
+            "temp": temp_value is not None,
+            "humidity": humidity_value is not None,
+            "light": light_value is not None,
+        },
         "ts": timestamp,
     }
     
