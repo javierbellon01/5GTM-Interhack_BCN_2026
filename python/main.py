@@ -143,20 +143,14 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
     if temp_value is not None:
         db.write_sample("temperature", temp_value, timestamp)
         sensor_last_seen_ms["temp"] = timestamp
-    else:
-        sensor_last_seen_ms["temp"] = None
 
     if humidity_value is not None:
         db.write_sample("humidity", humidity_value, timestamp)
         sensor_last_seen_ms["humidity"] = timestamp
-    else:
-        sensor_last_seen_ms["humidity"] = None
 
     if light_value is not None:
         db.write_sample("light", light_value, timestamp)
         sensor_last_seen_ms["light"] = timestamp
-    else:
-        sensor_last_seen_ms["light"] = None
 
     db.write_sample("person", float(person_count), timestamp)
     db.write_sample("trash_counter", float(trash_count), timestamp)

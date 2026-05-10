@@ -4,6 +4,7 @@
 
 #include <Arduino_Modulino.h>
 #include <Arduino_RouterBridge.h>
+#include <math.h>
 
 // Create object instance
 ModulinoThermo thermo;
@@ -28,15 +29,15 @@ void loop() {
     // Save the last time you updated the values
     previousMillis = currentMillis;
 
-    // Read temperature in Celsius from the sensor
+    // Read temperature and humidity first.
+    // If one sensor fails, values can become NaN and backend will handle it per-sensor.
     float celsius = thermo.getTemperature();
-
-    // Read humidity percentage from the sensor
     float humidity = thermo.getHumidity();
 
-    // Read light from the sensor
+    // Read light independently so a bad light value does not stop the notification.
+    float lightlevel = NAN;
     light.update();
-    float lightlevel = light.getAL();
+    lightlevel = light.getAL();
     
     // // Get colour approximation
     // String colourName = light.getColorApproximate();
