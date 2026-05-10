@@ -49,8 +49,6 @@ Using an Arduino Q1 equipped with various sensors and a webcam, the system colle
 **Key Metrics Monitored:**
 * **Cleanliness:** Object boundary detection models calculate the percentage of trash in the webcam's field of view.
 * **Environmental Health:** Real-time temperature, humidity, and sunlight tracking.
-* **Noise Pollution:** Acoustic contamination measured via the webcam's integrated microphone.
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Built With
@@ -78,7 +76,7 @@ Using an Arduino Q1 equipped with various sensors and a webcam, the system colle
 The technical architecture is split between Edge Computing and a Centralized Orchestrator:
 
 1. **Edge AI Model (Trash Detection):** We utilized **Edge Impulse** to train a FOMO (Faster Objects, More Objects) object detection model. The model is optimized for microcontrollers, running at a 320x320 resolution to efficiently identify and quantify trash boundaries in the park environment.
-2. **Data Aggregation:** The Arduino Q1 collects data from the FOMO model, the temperature/humidity sensors, the sunlight sensor, and the microphone. This is formatted into a local JSON payload.
+2. **Data Aggregation:** The Arduino Q1 collects data from the FOMO model, the temperature/humidity sensors, and the sunlight sensor. This is formatted into a local JSON payload.
 3. **Orchestrator Backend:** Built using **FastAPI**, the backend receives real-time telemetry from the Arduino via Wi-Fi.
 4. **Dashboard + Backend:** Built using **JavaScript** and **FastAPI**, the Arduino runs a lightweight web-interface to display real-time telemetry. 
 5. **LLM Integration:** A lightweight LLM utilizes the JSON telemetry data as context. When prompted via the dashboard, it parses the environmental data to return a human-readable park status report.

@@ -10,18 +10,15 @@ const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
 const reportBtn = document.getElementById('reportBtn');
 const captureBtn = document.getElementById('captureBtn');
-const micBtn = document.getElementById('micBtn');
-const micIcon = document.getElementById('micIcon');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 const videoFeed = document.getElementById('videoFeed');
 const videoPlaceholder = document.getElementById('videoPlaceholder');
 
-const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', noise: 'dB', person: 'pers.', trash_counter: 'items' };
+const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', person: 'pers.', trash_counter: 'items' };
 const sensorLabels = {
   temp: 'Temperature',
   humidity: 'Humidity',
   light: 'Light',
-  noise: 'Noise',
   person: 'Person',
   trash_counter: 'Litter Detected'
 };
@@ -29,32 +26,28 @@ const sensorColors = {
   temp: '#2d8fcb',
   humidity: '#2d8fcb',
   light: '#2d8fcb',
-  noise: '#2d8fcb',
   person: '#2d8fcb',
   trash_counter: '#d2473f' // Red color to highlight trash
 };
 const metricHistory = {
-  temp: [], humidity: [], light: [], noise: [], person: [], trash_counter: []
+  temp: [], humidity: [], light: [], person: [], trash_counter: []
 };
 const metricTrend = {
-  temp: null, humidity: null, light: null, noise: null, person: null, trash_counter: null
+  temp: null, humidity: null, light: null, person: null, trash_counter: null
 };
 const sensorStatusState = {};
 const sensorStatusLabels = [
   { key: 'temp', label: 'Temperature Sensor', icon: 'thermometer' },
   { key: 'humidity', label: 'Humidity Sensor', icon: 'droplet' },
   { key: 'light', label: 'Light Sensor', icon: 'sun' },
-  { key: 'noise', label: 'Noise Sensor', icon: 'volume' },
   { key: 'person', label: 'Person Sensor', icon: 'person' },
-  { key: 'camera', label: 'Central Camera', icon: 'camera' },
-  { key: 'microphone', label: 'Microphone', icon: 'mic' }
+  { key: 'camera', label: 'Central Camera', icon: 'camera' }
 ];
 
 const state = {
   ws: null,
   reconnectTimer: null,
   connected: false,
-  microphoneEnabled: true,
   metrics: {},
   events: [],
   messages: []
@@ -134,8 +127,8 @@ function metricCardTemplate(key) {
 }
 
 function renderMetricCards() {
-  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'noise', 'person', 'trash_counter'].map(metricCardTemplate).join('');
-  ['temp', 'humidity', 'light', 'noise', 'person', 'trash_counter'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
+  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'person', 'trash_counter'].map(metricCardTemplate).join('');
+  ['temp', 'humidity', 'light', 'person', 'trash_counter'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
 }
 
 function updateMetricVisuals(key, value, pulse = true) {
@@ -218,10 +211,8 @@ function sensorIcon(name) {
     thermometer: '<svg viewBox="0 0 24 24"><path d="M12 4a2 2 0 0 1 2 2v6.2a4 4 0 1 1-4 0V6a2 2 0 0 1 2-2z"></path></svg>',
     droplet: '<svg viewBox="0 0 24 24"><path d="M12 3s6 6.3 6 10a6 6 0 0 1-12 0c0-3.7 6-10 6-10z"></path></svg>',
     sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.9 4.9l1.4 1.4"></path><path d="M17.7 17.7l1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.9 19.1l1.4-1.4"></path><path d="M17.7 6.3l1.4-1.4"></path></svg>',
-    volume: '<svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4z"></path><path d="M16 9a4 4 0 0 1 0 6"></path><path d="M18.5 6.5a7 7 0 0 1 0 11"></path></svg>',
     person: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"></circle><path d="M8 20v-3a4 4 0 0 1 8 0v3"></path></svg>',
     camera: '<svg viewBox="0 0 24 24"><path d="M4 7h8l2 3h6v9H4z"></path><circle cx="12" cy="14" r="3"></circle></svg>',
-    mic: '<svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V8a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3z"></path><path d="M5 12a7 7 0 0 0 14 0"></path><path d="M12 19v3"></path></svg>'
   };
   return icons[name] || icons.camera;
 }
@@ -252,7 +243,7 @@ async function refreshLatestMetrics() {
 }
 
 function applySensorPayload(data) {
-  ['temp', 'humidity', 'light', 'noise', 'person', 'trash_counter'].forEach((key) => {
+  ['temp', 'humidity', 'light', 'person', 'trash_counter'].forEach((key) => {
     if (typeof data[key] !== 'undefined') {
       sensorStatusState[key] = true;
       state.metrics[key] = Number(data[key]);
@@ -368,18 +359,6 @@ function captureCameraFrame() {
   window.open(cameraStreamUrl, '_blank', 'noreferrer');
 }
 
-function toggleMicrophone() {
-  state.microphoneEnabled = !state.microphoneEnabled;
-  micBtn.setAttribute('aria-pressed', String(state.microphoneEnabled));
-  micBtn.title = state.microphoneEnabled ? 'Microphone enabled' : 'Microphone disabled';
-  micBtn.style.borderColor = state.microphoneEnabled ? 'var(--border)' : 'rgba(192, 57, 43, 0.6)';
-  micBtn.style.background = state.microphoneEnabled ? 'rgba(255, 255, 255, 0.02)' : 'rgba(192, 57, 43, 0.12)';
-  micIcon.innerHTML = state.microphoneEnabled
-    ? '<path d="M12 15a3 3 0 0 0 3-3V8a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3z"></path><path d="M5 12a7 7 0 0 0 14 0"></path><path d="M12 19v3"></path>'
-    : '<path d="M7 11v1a5 5 0 0 0 8 3.9"></path><path d="M12 15a3 3 0 0 1-3-3V8"></path><path d="M5 5l14 14"></path><path d="M12 19v3"></path>';
-  setSensorStatus('microphone', state.microphoneEnabled);
-}
-
 async function openFullscreen() {
   const element = document.querySelector('.camera-frame');
   if (!document.fullscreenElement && element.requestFullscreen) {
@@ -403,7 +382,6 @@ chatForm.addEventListener('submit', (event) => {
 
 reportBtn.addEventListener('click', downloadReport);
 captureBtn.addEventListener('click', captureCameraFrame);
-micBtn.addEventListener('click', toggleMicrophone);
 fullscreenBtn.addEventListener('click', openFullscreen);
 
 function startCameraStream() {

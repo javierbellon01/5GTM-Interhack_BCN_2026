@@ -48,7 +48,6 @@ def on_get_latest():
     temperature = db.read_last_sample("temperature")
     humidity = db.read_last_sample("humidity")
     light = db.read_last_sample("light")
-    noise = db.read_last_sample("noise")
     person = db.read_last_sample("person")
     trash = db.read_last_sample("trash_counter")
 
@@ -73,7 +72,6 @@ def on_get_latest():
         "temp": temperature[2] if temperature else None,
         "humidity": humidity[2] if humidity else None,
         "light": light[2] if light else None,
-        "noise": noise[2] if noise else 0, # Defaulting to 0 until mic is implemented
         "person": person[2] if person else 0,
         "trash_counter": trash[2] if trash else 0
     }
@@ -112,15 +110,11 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
     # 1. Read the latest live detections from our background state
     person_count = latest_camera_counts["person"]
     trash_count = latest_camera_counts["trash"]
-    
-    # Placeholder for noise (needs to be routed from the mic brick/sketch later)
-    noise_level = 50.0 
 
     # 2. Write everything to the TimeSeries DB
     db.write_sample("temperature", float(celsius), timestamp)
     db.write_sample("humidity", float(humidity), timestamp)
     db.write_sample("light", float(lightlevel), timestamp)
-    db.write_sample("noise", float(noise_level), timestamp)
     db.write_sample("person", float(person_count), timestamp)
     db.write_sample("trash_counter", float(trash_count), timestamp)
 
@@ -129,7 +123,6 @@ def record_sensor_samples(celsius: float, humidity: float, lightlevel: float):
         "temp": float(celsius),
         "humidity": float(humidity),
         "light": float(lightlevel),
-        "noise": float(noise_level),
         "person": float(person_count),
         "trash_counter": float(trash_count),
         "ts": timestamp,
