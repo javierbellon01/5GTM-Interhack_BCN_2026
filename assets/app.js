@@ -10,61 +10,45 @@ const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
 const reportBtn = document.getElementById('reportBtn');
 const captureBtn = document.getElementById('captureBtn');
-const micBtn = document.getElementById('micBtn');
-const micIcon = document.getElementById('micIcon');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 const videoFeed = document.getElementById('videoFeed');
+const videoPlaceholder = document.getElementById('videoPlaceholder');
 
-const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', noise: 'dB', people: 'pers.', trash: 'items' };
+const sensorUnits = { temp: '°C', humidity: '%', light: 'lux', person: 'pers.', trash_counter: 'items' };
 const sensorLabels = {
   temp: 'Temperature',
   humidity: 'Humidity',
   light: 'Light',
-  noise: 'Noise',
-  people: 'People',
-  trash: 'Trash'
+  person: 'Person',
+  trash_counter: 'Litter Detected'
 };
 const sensorColors = {
   temp: '#2d8fcb',
   humidity: '#2d8fcb',
   light: '#2d8fcb',
-  noise: '#2d8fcb',
-  people: '#2d8fcb',
-  trash: '#2d8fcb'
+  person: '#2d8fcb',
+  trash_counter: '#d2473f' // Red color to highlight trash
 };
 const metricHistory = {
-  temp: [],
-  humidity: [],
-  light: [],
-  noise: [],
-  people: [],
-  trash: []
+  temp: [], humidity: [], light: [], person: [], trash_counter: []
 };
 const metricTrend = {
-  temp: null,
-  humidity: null,
-  light: null,
-  noise: null,
-  people: null,
-  trash: null
+  temp: null, humidity: null, light: null, person: null, trash_counter: null
 };
 const sensorStatusState = {};
 const sensorStatusLabels = [
   { key: 'temp', label: 'Temperature Sensor', icon: 'thermometer' },
   { key: 'humidity', label: 'Humidity Sensor', icon: 'droplet' },
   { key: 'light', label: 'Light Sensor', icon: 'sun' },
-  { key: 'noise', label: 'Noise Sensor', icon: 'volume' },
-  { key: 'people', label: 'People Sensor', icon: 'people' },
   { key: 'trash', label: 'Trash Sensor', icon: 'trash' },
   { key: 'camera', label: 'Central Camera', icon: 'camera' },
-  { key: 'microphone', label: 'Microphone', icon: 'mic' }
+  { key: 'person', label: 'Person Sensor', icon: 'person' 
 ];
 
 const state = {
   ws: null,
   reconnectTimer: null,
   connected: false,
-  microphoneEnabled: true,
   metrics: {},
   events: [],
   alerts: [],
@@ -133,6 +117,8 @@ function evaluateThresholds(data) {
     }
   }
 }
+const cameraStreamUrl = `http://${window.location.hostname}:4912/embed`;
+let cameraStreamRetryTimer = null;
 
 function setSensorStatus(key, connected) {
   sensorStatusState[key] = Boolean(connected);
@@ -205,8 +191,8 @@ function metricCardTemplate(key) {
 }
 
 function renderMetricCards() {
-  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'noise', 'people', 'trash'].map(metricCardTemplate).join('');
-  ['temp', 'humidity', 'light', 'noise', 'people', 'trash'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
+  ambientGrid.innerHTML = ['temp', 'humidity', 'light', 'person', 'trash_counter'].map(metricCardTemplate).join('');
+  ['temp', 'humidity', 'light', 'person', 'trash_counter'].forEach((key) => updateMetricVisuals(key, state.metrics[key], false));
 }
 
 function updateMetricVisuals(key, value, pulse = true) {
@@ -289,11 +275,10 @@ function sensorIcon(name) {
     thermometer: '<svg viewBox="0 0 24 24"><path d="M12 4a2 2 0 0 1 2 2v6.2a4 4 0 1 1-4 0V6a2 2 0 0 1 2-2z"></path></svg>',
     droplet: '<svg viewBox="0 0 24 24"><path d="M12 3s6 6.3 6 10a6 6 0 0 1-12 0c0-3.7 6-10 6-10z"></path></svg>',
     sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.9 4.9l1.4 1.4"></path><path d="M17.7 17.7l1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.9 19.1l1.4-1.4"></path><path d="M17.7 6.3l1.4-1.4"></path></svg>',
-    volume: '<svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4z"></path><path d="M16 9a4 4 0 0 1 0 6"></path><path d="M18.5 6.5a7 7 0 0 1 0 11"></path></svg>',
     people: '<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"></circle><circle cx="16" cy="8" r="3"></circle><path d="M8 11a3 3 0 0 0-3 3v4h2v-4a1 1 0 0 1 1-1h2v-2H8z"></path><path d="M16 11a3 3 0 0 1 3 3v4h-2v-4a1 1 0 0 0-1-1h-2v-2h2z"></path><path d="M12 11a2 2 0 0 0-2 2v4h4v-4a2 2 0 0 0-2-2z"></path></svg>',
     trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M8 7V5h8v2"></path><path d="M6 7l1 13h10l1-13"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>',
+    person: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"></circle><path d="M8 20v-3a4 4 0 0 1 8 0v3"></path></svg>',
     camera: '<svg viewBox="0 0 24 24"><path d="M4 7h8l2 3h6v9H4z"></path><circle cx="12" cy="14" r="3"></circle></svg>',
-    mic: '<svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V8a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3z"></path><path d="M5 12a7 7 0 0 0 14 0"></path><path d="M12 19v3"></path></svg>'
   };
   return icons[name] || icons.camera;
 }
@@ -324,7 +309,7 @@ async function refreshLatestMetrics() {
 }
 
 function applySensorPayload(data) {
-  ['temp', 'humidity', 'light', 'noise', 'people', 'trash'].forEach((key) => {
+  ['temp', 'humidity', 'light', 'person', 'trash_counter'].forEach((key) => {
     if (typeof data[key] !== 'undefined') {
       sensorStatusState[key] = true;
       state.metrics[key] = Number(data[key]);
@@ -501,35 +486,7 @@ async function downloadReport() {
 }
 
 function captureCameraFrame() {
-  const image = videoFeed;
-  if (!image.complete || !image.naturalWidth) {
-    return;
-  }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = image.naturalWidth;
-  canvas.height = image.naturalHeight;
-  const context = canvas.getContext('2d');
-  context.drawImage(image, 0, 0);
-  const url = canvas.toDataURL('image/png');
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `captura-camara-${Date.now()}.png`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-}
-
-function toggleMicrophone() {
-  state.microphoneEnabled = !state.microphoneEnabled;
-  micBtn.setAttribute('aria-pressed', String(state.microphoneEnabled));
-  micBtn.title = state.microphoneEnabled ? 'Microphone enabled' : 'Microphone disabled';
-  micBtn.style.borderColor = state.microphoneEnabled ? 'var(--border)' : 'rgba(192, 57, 43, 0.6)';
-  micBtn.style.background = state.microphoneEnabled ? 'rgba(255, 255, 255, 0.02)' : 'rgba(192, 57, 43, 0.12)';
-  micIcon.innerHTML = state.microphoneEnabled
-    ? '<path d="M12 15a3 3 0 0 0 3-3V8a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3z"></path><path d="M5 12a7 7 0 0 0 14 0"></path><path d="M12 19v3"></path>'
-    : '<path d="M7 11v1a5 5 0 0 0 8 3.9"></path><path d="M12 15a3 3 0 0 1-3-3V8"></path><path d="M5 5l14 14"></path><path d="M12 19v3"></path>';
-  setSensorStatus('microphone', state.microphoneEnabled);
+  window.open(cameraStreamUrl, '_blank', 'noreferrer');
 }
 
 async function openFullscreen() {
@@ -555,23 +512,63 @@ chatForm.addEventListener('submit', (event) => {
 
 reportBtn.addEventListener('click', downloadReport);
 captureBtn.addEventListener('click', captureCameraFrame);
-micBtn.addEventListener('click', toggleMicrophone);
 fullscreenBtn.addEventListener('click', openFullscreen);
 
-videoFeed.addEventListener('load', () => setSensorStatus('camera', true));
-videoFeed.addEventListener('error', () => setSensorStatus('camera', false));
+function startCameraStream() {
+  if (!videoFeed || !videoPlaceholder) {
+    return;
+  }
+
+  videoPlaceholder.style.display = 'flex';
+  videoFeed.style.display = 'none';
+  videoFeed.src = cameraStreamUrl;
+
+  if (cameraStreamRetryTimer) {
+    window.clearInterval(cameraStreamRetryTimer);
+  }
+
+  cameraStreamRetryTimer = window.setInterval(() => {
+    if (videoFeed.style.display === 'none') {
+      videoFeed.src = cameraStreamUrl;
+    }
+  }, 1000);
+}
+
+videoFeed.addEventListener('load', () => {
+  if (videoPlaceholder) {
+    videoPlaceholder.style.display = 'none';
+  }
+  videoFeed.style.display = 'block';
+  setSensorStatus('camera', true);
+  if (cameraStreamRetryTimer) {
+    window.clearInterval(cameraStreamRetryTimer);
+    cameraStreamRetryTimer = null;
+  }
+});
+
+videoFeed.addEventListener('error', () => {
+  if (videoPlaceholder) {
+    videoPlaceholder.style.display = 'flex';
+  }
+  videoFeed.style.display = 'none';
+  setSensorStatus('camera', false);
+});
 
 renderMetricCards();
 renderEvents();
 renderSensors();
 renderMessages();
 setConnected(false);
+startCameraStream();
 refreshLatestMetrics();
 latestMetricsTimer = window.setInterval(refreshLatestMetrics, 1000);
 
 window.addEventListener('beforeunload', () => {
   if (latestMetricsTimer) {
     clearInterval(latestMetricsTimer);
+  }
+  if (cameraStreamRetryTimer) {
+    clearInterval(cameraStreamRetryTimer);
   }
   if (state.ws) {
     try { state.ws.close(); } catch (error) {}
